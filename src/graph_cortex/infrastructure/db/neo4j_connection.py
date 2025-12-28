@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Neo4jConnection:
-    _instance = None
-
+    _instance = None # Singleton pattern to ensure only one connection is created
+    
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(Neo4jConnection, cls).__new__(cls)
