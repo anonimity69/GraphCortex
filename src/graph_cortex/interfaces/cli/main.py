@@ -1,7 +1,9 @@
 import uuid
 import sys
+import json
 from graph_cortex.infrastructure.db.schema_migrations import initialize_schema
 from graph_cortex.core.memory.manager import MemoryManager
+from graph_cortex.core.retrieval.engine import RetrievalEngine
 
 def main():
     print("Welcome to GraphCortex CLI Native Interface.")
@@ -31,7 +33,27 @@ def main():
     
     event_id = manager.consolidate_episode(session_id, summary, extracted_entities)
     print(f"Episode consolidated with Event ID: {event_id}")
-    print("\nClean Architecture Verification Complete!")
+    
+    print("\n==================================")
+    print("[Retrieval Engine] Testing Spreading Activation...")
+    retriever = RetrievalEngine(cutoff_threshold=0.2, max_depth=3)
+    
+    # Search for an anchor we just inserted
+    query = ["Clean Architecture"]
+    print(f"Triggering Lexical Search for Core Terms: {query}")
+    
+    results = retriever.retrieve(query)
+    
+    if results["status"] == "Hit":
+        print(f"\n[ANCHORS FOUND]: {results['anchors']}")
+        print(f"[ACTIVATED NETWORK]:")
+        for node in results["network"]:
+            print(f"  -> [{node['distance']} hops away] {node['type']}: {node['name']}")
+        print(f"[INHIBITED HUBS]: {results['inhibited_hubs']}")
+    else:
+        print("\n[MISS] No relevant anchors found.")
+        
+    print("\nPhase 2 Retrieval Verification Complete!")
 
 if __name__ == "__main__":
     sys.exit(main())

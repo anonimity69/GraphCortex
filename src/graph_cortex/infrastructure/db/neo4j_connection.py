@@ -37,3 +37,9 @@ def get_session():
     if driver:
         return driver.session()
     raise ConnectionError("Neo4j driver is not initialized.")
+
+def execute_read_query(query: str, **kwargs):
+    """Executes a generic read transaction and returns a list of dictionaries."""
+    with get_session() as session:
+        result = session.run(query, **kwargs)
+        return [record.data() for record in result]
