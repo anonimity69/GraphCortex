@@ -33,3 +33,18 @@ def execute_spreading_activation_hop(session, target_node_id, hop_depth):
     """
     result = session.run(query, node_id=target_node_id, depth=hop_depth)
     return [record.data() for record in result]
+
+def get_anchors_by_vector_similarity(session, vector, limit=2):
+    """
+    Finds anchor nodes based on semantic vector similarity (Cosine).
+    Queries the 'entity_vector_index' initialized in schema_migrations.
+    """
+    query = """
+    CALL db.index.vector.queryNodes('entity_vector_index', $limit, $vector)
+    YIELD node, score
+    WHERE score > 0.65  // Minimum similarity threshold to prevent hallucinated anchors
+    RETURN elementId(node) AS node_id, node.name AS name, labels(node)[0] AS type, score
+    ORDER BY score DESC
+    """
+    result = session.run(query, limit=limit, vector=vector)
+    return [record.data() for record in result]

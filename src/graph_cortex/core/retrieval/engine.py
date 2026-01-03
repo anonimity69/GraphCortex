@@ -1,9 +1,7 @@
 from graph_cortex.infrastructure.db.neo4j_connection import get_session
-from graph_cortex.infrastructure.db.queries.retrieval_queries import get_anchor_nodes_by_name, execute_spreading_activation_hop
+from graph_cortex.infrastructure.db.queries.retrieval_queries import get_anchor_nodes_by_name, execute_spreading_activation_hop, get_anchors_by_vector_similarity
 from graph_cortex.core.retrieval.inhibition import apply_lateral_inhibition
-
-# Stub for Semantic Trigger (Will be lazy loaded to save container memory)
-# from sentence_transformers import SentenceTransformer
+from graph_cortex.config.logger import get_retrieval_logger
 
 class RetrievalEngine:
     """
@@ -14,6 +12,7 @@ class RetrievalEngine:
         self.cutoff_threshold = cutoff_threshold
         self.max_depth = max_depth
         self.semantic_model = None # Lazy load SentenceTransformer here when needed
+        self.logger = get_retrieval_logger()
 
     def retrieve(self, query_terms: list):
         """
@@ -26,17 +25,25 @@ class RetrievalEngine:
         with get_session() as session:
             anchors = get_anchor_nodes_by_name(session, query_terms)
             
-            # Step 1B: Semantic Vector Fallback (Stub)
+            # Step 1B: Semantic Vector Fallback
             if not anchors:
-                print("[!] Lexical miss. Falling back to Sentence-Transformers Vector Search... (Stub)")
-                # If we had a vector index:
-                # if not self.semantic_model:
-                #     self.semantic_model = SentenceTransformer('all-MiniLM-L6-v2') 
-                # vector = self.semantic_model.encode(query_terms[0])
-                # anchors = get_anchors_by_vector_similarity(session, vector)
+                self.logger.info(f"Lexical Miss for '{query_terms}'. Initiating Semantic Vector Fallback.")
+                print(f"\n[!] Lexical miss for '{query_terms}'. Activating Semantic Vector Fallback...")
                 
-                return {"status": "Miss", "anchors": [], "network": [], "inhibited_hubs": []}
+                if not self.semantic_model:
+                    from sentence_transformers import SentenceTransformer
+                    self.semantic_model = SentenceTransformer('all-MiniLM-L6-v2') 
                 
+                vector = self.semantic_model.encode(query_terms[0]).tolist()
+                anchors = get_anchors_by_vector_similarity(session, vector, limit=2)
+                
+                if not anchors:
+                    self.logger.warning(f"Semantic Fallback Miss for '{query_terms}'. No anchors found.")
+                    return {"status": "Miss", "anchors": [], "network": [], "inhibited_hubs": []}
+                else:
+                    self.logger.info(f"Semantic Fallback Success! Found semantic anchors: {anchors}")
+            else:
+                self.logger.info(f"Lexical Hit for '{query_terms}'. Found exact anchors: {anchors}")
             # Step 2: Spreading Activation from Anchors
             activated_network = []
             dropped = []
