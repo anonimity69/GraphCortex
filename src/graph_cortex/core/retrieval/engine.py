@@ -2,6 +2,7 @@ from graph_cortex.infrastructure.db.neo4j_connection import get_session
 from graph_cortex.infrastructure.db.queries.retrieval_queries import get_anchor_nodes_by_name, execute_spreading_activation_hop, get_anchors_by_vector_similarity
 from graph_cortex.core.retrieval.inhibition import apply_lateral_inhibition
 from graph_cortex.config.logger import get_retrieval_logger
+from sentence_transformers import SentenceTransformer
 
 class RetrievalEngine:
     """
@@ -31,7 +32,6 @@ class RetrievalEngine:
                 print(f"\n[!] Lexical miss for '{query_terms}'. Activating Semantic Vector Fallback...")
                 
                 if not self.semantic_model:
-                    from sentence_transformers import SentenceTransformer
                     self.semantic_model = SentenceTransformer('all-MiniLM-L6-v2') 
                 
                 vector = self.semantic_model.encode(query_terms[0]).tolist()
