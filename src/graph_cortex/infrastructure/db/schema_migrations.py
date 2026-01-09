@@ -1,9 +1,9 @@
 from graph_cortex.infrastructure.db.neo4j_connection import get_session
 
 # Configuration for Semantic Vector Search
-# sentence-transformers (all-MiniLM-L6-v2) uses 384-dimensional vectors by default.
+# sentence-transformers (BAAI/bge-base-en-v1.5) uses 768-dimensional vectors.
 # If migrating to OpenAI embeddings later, change this to 1536 and re-initialize.
-VECTOR_DIMENSION = 384
+VECTOR_DIMENSION = 768
 
 def initialize_schema():
     """
@@ -24,6 +24,8 @@ def initialize_schema():
     ]
     
     vector_queries = [
+        "DROP INDEX entity_vector_index IF EXISTS",
+        "DROP INDEX concept_vector_index IF EXISTS",
         f"CREATE VECTOR INDEX entity_vector_index IF NOT EXISTS FOR (e:Entity) ON (e.embedding) OPTIONS {{indexConfig: {{`vector.dimensions`: {VECTOR_DIMENSION}, `similarity.function`: 'cosine'}}}}",
         f"CREATE VECTOR INDEX concept_vector_index IF NOT EXISTS FOR (c:Concept) ON (c.embedding) OPTIONS {{indexConfig: {{`vector.dimensions`: {VECTOR_DIMENSION}, `similarity.function`: 'cosine'}}}}"
     ]

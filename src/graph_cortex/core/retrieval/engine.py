@@ -32,7 +32,7 @@ class RetrievalEngine:
                 print(f"\n[!] Lexical miss for '{query_terms}'. Activating Semantic Vector Fallback...")
                 
                 if not self.semantic_model:
-                    self.semantic_model = SentenceTransformer('all-MiniLM-L6-v2') 
+                    self.semantic_model = SentenceTransformer('BAAI/bge-base-en-v1.5', device='mps') 
                 
                 vector = self.semantic_model.encode(query_terms[0]).tolist()
                 anchors = get_anchors_by_vector_similarity(session, vector, limit=2)
