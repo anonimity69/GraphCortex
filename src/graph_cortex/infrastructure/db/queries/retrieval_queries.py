@@ -17,12 +17,15 @@ def execute_spreading_activation_hop(session, target_node_id, hop_depth):
     """
     Executes a custom Cypher BFS traversal from the target node up to a certain depth.
     Calculates raw 'degree' for downstream fan-effect attenuation.
+    Note: Neo4j 5.x does not allow parameters in variable-length patterns,
+    so hop_depth is safely interpolated as an integer literal.
     """
-    query = """
-    MATCH path = (start)-[*1..$depth]-(connected)
+    depth = int(hop_depth)  # Sanitize to prevent injection
+    query = f"""
+    MATCH path = (start)-[*1..{depth}]-(connected)
     WHERE elementId(start) = $node_id
     WITH start, connected, REDUCE(s = 0, n IN nodes(path) | s + 1) AS distance,
-         SIZE((connected)--()) AS degree
+         COUNT {{ (connected)--() }} AS degree
     RETURN 
         elementId(connected) AS node_id, 
         connected.name AS name, 
@@ -31,7 +34,7 @@ def execute_spreading_activation_hop(session, target_node_id, hop_depth):
         degree
     ORDER BY distance ASC
     """
-    result = session.run(query, node_id=target_node_id, depth=hop_depth)
+    result = session.run(query, node_id=target_node_id)
     return [record.data() for record in result]
 
 def get_anchors_by_vector_similarity(session, vector, limit=2):
