@@ -1,5 +1,7 @@
 from typing import List, Dict
 from graph_cortex.infrastructure.db.neo4j_connection import get_session
+from graph_cortex.config.retrieval import DEFAULT_RELATIONSHIP_TYPE
+from graph_cortex.config.embedding import encode as encode_embedding
 
 class SemanticMemory:
     """
@@ -7,14 +9,11 @@ class SemanticMemory:
     Maps out global knowledge elements derived from specific episodic events.
     """
     def __init__(self):
-        self.semantic_model = None
+        pass
 
     def _get_embedding(self, text: str) -> List[float]:
-        """Lazy loads SentenceTransformer using Apple Silicon MPS and returns a 768-dimensional vector."""
-        if not self.semantic_model:
-            from sentence_transformers import SentenceTransformer
-            self.semantic_model = SentenceTransformer('BAAI/bge-base-en-v1.5', device='mps')
-        return self.semantic_model.encode(text).tolist()
+        """Returns a vector embedding using the centrally configured model."""
+        return encode_embedding(text)
 
     def add_entity(self, name: str, node_type: str = "Entity", attributes: Dict = None):
         """Creates or updates a general semantic entity, embedding it as a vector."""
@@ -36,7 +35,7 @@ class SemanticMemory:
             session.run(query, name=name, embedding=embedding, **attributes)
         return name
 
-    def extract_from_event(self, event_id: str, entity_name: str, concept_name: str, relationship_type: str = "RELATED_TO"):
+    def extract_from_event(self, event_id: str, entity_name: str, concept_name: str, relationship_type: str = DEFAULT_RELATIONSHIP_TYPE):
         """
         Extracts structured semantic knowledge from an event and calculates vector embeddings.
         """

@@ -2,17 +2,21 @@ from graph_cortex.infrastructure.db.neo4j_connection import get_session
 from graph_cortex.infrastructure.db.queries.retrieval_queries import get_anchor_nodes_by_name, execute_spreading_activation_hop, get_anchors_by_vector_similarity
 from graph_cortex.core.retrieval.inhibition import apply_lateral_inhibition
 from graph_cortex.config.logger import get_retrieval_logger
-from sentence_transformers import SentenceTransformer
+from graph_cortex.config.embedding import encode as encode_embedding
+from graph_cortex.config.retrieval import (
+    RETRIEVAL_MAX_DEPTH, RETRIEVAL_CUTOFF_THRESHOLD,
+    SEMANTIC_ANCHOR_LIMIT, LEXICAL_ANCHOR_LIMIT,
+    INHIBITION_INITIAL_ENERGY, INHIBITION_DEGREE_PENALTY, INHIBITION_DISTANCE_PENALTY
+)
 
 class RetrievalEngine:
     """
     Orchestrates the Spreading Activation Retrieval process.
     Leverages Lexical/Semantic triggers to find anchors, and transverses outwards.
     """
-    def __init__(self, cutoff_threshold=0.2, max_depth=3):
+    def __init__(self, cutoff_threshold=RETRIEVAL_CUTOFF_THRESHOLD, max_depth=RETRIEVAL_MAX_DEPTH):
         self.cutoff_threshold = cutoff_threshold
         self.max_depth = max_depth
-        self.semantic_model = None # Lazy load SentenceTransformer here when needed
         self.logger = get_retrieval_logger()
 
     def retrieve(self, query_terms: list):
@@ -24,18 +28,15 @@ class RetrievalEngine:
         """
         # Step 1A: Lexical Trigger
         with get_session() as session:
-            anchors = get_anchor_nodes_by_name(session, query_terms)
+            anchors = get_anchor_nodes_by_name(session, query_terms, limit=LEXICAL_ANCHOR_LIMIT)
             
             # Step 1B: Semantic Vector Fallback
             if not anchors:
                 self.logger.info(f"Lexical Miss for '{query_terms}'. Initiating Semantic Vector Fallback.")
                 print(f"\n[!] Lexical miss for '{query_terms}'. Activating Semantic Vector Fallback...")
                 
-                if not self.semantic_model:
-                    self.semantic_model = SentenceTransformer('BAAI/bge-base-en-v1.5', device='mps') 
-                
-                vector = self.semantic_model.encode(query_terms[0]).tolist()
-                anchors = get_anchors_by_vector_similarity(session, vector, limit=2)
+                vector = encode_embedding(query_terms[0])
+                anchors = get_anchors_by_vector_similarity(session, vector, limit=SEMANTIC_ANCHOR_LIMIT)
                 
                 if not anchors:
                     self.logger.warning(f"Semantic Fallback Miss for '{query_terms}'. No anchors found.")
@@ -56,7 +57,7 @@ class RetrievalEngine:
                     "type": anchor["type"],
                     "distance": 0,
                     "degree": 1,
-                    "activation_energy": 1.0 # Max energy for exact match anchor
+                    "activation_energy": INHIBITION_INITIAL_ENERGY
                 })
                 
                 # Traverse outwards (Fan out) up to depth limit
@@ -64,7 +65,10 @@ class RetrievalEngine:
                 
                 # Step 3: Apply Lateral Inhibition (Energy Decay)
                 filtered, hubs = apply_lateral_inhibition(
-                    traversed, 
+                    traversed,
+                    initial_energy=INHIBITION_INITIAL_ENERGY,
+                    degree_penalty=INHIBITION_DEGREE_PENALTY,
+                    distance_penalty=INHIBITION_DISTANCE_PENALTY,
                     cutoff_threshold=self.cutoff_threshold
                 )
                 

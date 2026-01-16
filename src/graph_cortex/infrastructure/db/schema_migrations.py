@@ -1,9 +1,5 @@
 from graph_cortex.infrastructure.db.neo4j_connection import get_session
-
-# Configuration for Semantic Vector Search
-# sentence-transformers (BAAI/bge-base-en-v1.5) uses 768-dimensional vectors.
-# If migrating to OpenAI embeddings later, change this to 1536 and re-initialize.
-VECTOR_DIMENSION = 768
+from graph_cortex.config.embedding import get_vector_dimension
 
 def initialize_schema():
     """
@@ -23,11 +19,14 @@ def initialize_schema():
         "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Concept) REQUIRE c.name IS UNIQUE"
     ]
     
+    # Auto-detect vector dimension from the configured model
+    dim = get_vector_dimension()
+    
     vector_queries = [
         "DROP INDEX entity_vector_index IF EXISTS",
         "DROP INDEX concept_vector_index IF EXISTS",
-        f"CREATE VECTOR INDEX entity_vector_index IF NOT EXISTS FOR (e:Entity) ON (e.embedding) OPTIONS {{indexConfig: {{`vector.dimensions`: {VECTOR_DIMENSION}, `vector.similarity_function`: 'cosine'}}}}",
-        f"CREATE VECTOR INDEX concept_vector_index IF NOT EXISTS FOR (c:Concept) ON (c.embedding) OPTIONS {{indexConfig: {{`vector.dimensions`: {VECTOR_DIMENSION}, `vector.similarity_function`: 'cosine'}}}}"
+        f"CREATE VECTOR INDEX entity_vector_index IF NOT EXISTS FOR (e:Entity) ON (e.embedding) OPTIONS {{indexConfig: {{`vector.dimensions`: {dim}, `vector.similarity_function`: 'cosine'}}}}",
+        f"CREATE VECTOR INDEX concept_vector_index IF NOT EXISTS FOR (c:Concept) ON (c.embedding) OPTIONS {{indexConfig: {{`vector.dimensions`: {dim}, `vector.similarity_function`: 'cosine'}}}}"
     ]
     
     try:
@@ -41,7 +40,7 @@ def initialize_schema():
             try:
                 for v_query in vector_queries:
                     session.run(v_query)
-                print(f"[INFO] Vector Indexes ({VECTOR_DIMENSION}-Dimensions) initialized successfully.")
+                print(f"[INFO] Vector Indexes ({dim}-Dimensions) initialized successfully.")
             except Exception as v_err:
                 print(f"\n[WARNING] Neo4j Vector Initialization Failed.")
                 print(f"[DIAGNOSTIC] Your current Neo4j Container version may be outdated and does not support Vector indexing.")
