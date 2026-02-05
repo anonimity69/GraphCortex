@@ -8,6 +8,8 @@ authors = [
 dependencies = [
     "neo4j>=5.0.0",
     "python-dotenv>=1.0.0",
+    "ray[serve]>=2.9.0",
+    "google-genai>=1.0.0",
 ]
 requires-python = ">=3.9"
 

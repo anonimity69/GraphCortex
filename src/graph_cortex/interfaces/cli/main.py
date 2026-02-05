@@ -1,59 +1,77 @@
 import uuid
 import sys
-import json
+import asyncio
+import ray
+from ray import serve
+
 from graph_cortex.infrastructure.db.schema_migrations import initialize_schema
 from graph_cortex.core.memory.manager import MemoryManager
-from graph_cortex.core.retrieval.engine import RetrievalEngine
+from graph_cortex.core.agents.researcher import ResearchAgent
+from graph_cortex.core.agents.summarizer import SummaryAgent
+from graph_cortex.infrastructure.inference.llm_router import LLMEngineDeployment
 
-def main():
-    print("Welcome to GraphCortex CLI Native Interface.")
-    print("Initializing Database Schema...")
+async def async_main():
+    print("=====================================================")
+    print("🧠 GraphCortex Phase 3: Distributed Orchestration")
+    print("=====================================================")
     
-    # This might fail gracefully if Neo4j isn't active
+    print("\n[INIT] Initializing Neo4j Schema (Soft Deletion rules enabled)...")
     initialize_schema()
     
-    print("\nStarting memory integration...")
+    print("\n[INIT] Connecting to Ray Cluster...")
+    if not ray.is_initialized():
+        ray.init(ignore_reinit_error=True)
+        
+    print("[INIT] Deploying LLMEngine (Gemini) to Ray Serve...")
+    serve.start(detached=True)
+    serve.run(LLMEngineDeployment.bind(), name="LLMEngineDeployment", route_prefix="/llm")
+    
+    # Instantiate Swarm and Utilities
     manager = MemoryManager()
+    researcher = ResearchAgent()
+    summarizer = SummaryAgent()
     
     session_id = f"session_{uuid.uuid4().hex[:8]}"
+    print(f"\n[SESSION] Started new multi-agent session: {session_id}")
     
-    print(f"\n[Working Memory] Processing conversation turn for session: {session_id}")
-    manager.process_turn(
-        session_id=session_id,
-        user_input="How does clean architecture improve graph database access?",
-        agent_response="By strictly decoupling the Neo4j driver queries (infrastructure) from the raw data structures (core domain), the codebase becomes modular and easily testable."
-    )
+    # ─── ACT 1: Working Memory Buffering ────────────────────────────────────
+    user_input = "Could you explain what Clean Architecture is, and why we use it for Graph Databases?"
+    print(f"\n[USER]: {user_input}")
+    manager.working.add_interaction(session_id)
+    manager.working.add_message(session_id, role="user", content=user_input)
     
-    print("\n[Episodic & Semantic Memory] Consolidating episode...")
-    summary = "User asked about Clean Architecture in graphs; agent explained decoupling driver from domain."
-    extracted_entities = [
-        {"entity": "Clean Architecture", "concept": "Software Design", "relation": "IS_A_PATTERN_OF"},
-        {"entity": "Neo4j Driver", "concept": "Infrastructure", "relation": "BELONGS_TO_LAYER"}
-    ]
+    # ─── ACT 2: Research Agent (Retrieval + LLM Generation) ─────────────────
+    print(f"\n[RESEARCHER] Taking the query...")
+    research_result = await researcher.process_query(user_input)
+    agent_response = research_result["answer"]
     
-    event_id = manager.consolidate_episode(session_id, summary, extracted_entities)
-    print(f"Episode consolidated with Event ID: {event_id}")
+    print(f"\n[AGENT]: {agent_response}")
+    manager.working.add_message(session_id, role="agent", content=agent_response)
     
-    print("\n==================================")
-    print("[Retrieval Engine] Testing Spreading Activation...")
-    retriever = RetrievalEngine(cutoff_threshold=0.2, max_depth=3)
+    # ─── ACT 3: Summary Agent (Concurrent Knowledge Extraction) ─────────────
+    print(f"\n[SUMMARIZER] Launching background extraction task...")
     
-    # Search for an anchor using a synonymous term to inherently force Semantic Vector Fallback
-    query = ["System Design"]
-    print(f"Triggering Search for Concept: {query}")
+    # This simulates the summary agent running entirely decoupled from the main response loop
+    extracted_knowledge = await summarizer.extract_and_consolidate(user_input, agent_response)
     
-    results = retriever.retrieve(query)
-    
-    if results["status"] == "Hit":
-        print(f"\n[ANCHORS FOUND]: {results['anchors']}")
-        print(f"[ACTIVATED NETWORK]:")
-        for node in results["network"]:
-            print(f"  -> [{node['distance']} hops away] {node['type']}: {node['name']}")
-        print(f"[INHIBITED HUBS]: {results['inhibited_hubs']}")
-    else:
-        print("\n[MISS] No relevant anchors found.")
+    print(f"\n[SUMMARIZER OUTPUT]:")
+    print(f"  Summary: {extracted_knowledge.get('summary')}")
+    print(f"  Entities Discovered: {len(extracted_knowledge.get('entities', []))}")
+    for ent in extracted_knowledge.get("entities", []):
+        print(f"    - {ent.get('entity', 'Unknown')} [{ent.get('relation', '--')}] -> {ent.get('concept', 'Unknown')}")
         
-    print("\nPhase 3 Vector Semantic Verification Complete! Check /Logs for tracking.")
+    # ─── ACT 4: Database Committing ─────────────────────────────────────────
+    event_id = manager.consolidate_episode(
+        session_id=session_id,
+        generated_summary=extracted_knowledge.get("summary", ""),
+        extracted_entities=extracted_knowledge.get("entities", [])
+    )
+    print(f"\n[STORAGE] Episode consolidated and written to graph. Event ID: {event_id}")
+
+    print("\nPhase 3 Multi-Agent Orchestration complete! Check Neo4j Browser to see the new entities.")
+
+def main():
+    asyncio.run(async_main())
 
 if __name__ == "__main__":
     sys.exit(main())

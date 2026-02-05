@@ -8,6 +8,7 @@ def get_anchor_nodes_by_name(session, entity_names, limit=LEXICAL_ANCHOR_LIMIT):
     query = """
     UNWIND $names AS name
     MATCH (n) WHERE (n:Entity OR n:Concept) AND toLower(n.name) CONTAINS toLower(name)
+          AND coalesce(n.is_active, true) = true
     RETURN elementId(n) AS node_id, n.name AS name, labels(n)[0] AS type
     LIMIT $limit
     """
@@ -26,6 +27,8 @@ def execute_spreading_activation_hop(session, target_node_id, hop_depth):
     query = f"""
     MATCH path = (start)-[*1..{depth}]-(connected)
     WHERE elementId(start) = $node_id
+      AND coalesce(connected.is_active, true) = true
+      AND ALL(node IN nodes(path) WHERE coalesce(node.is_active, true) = true)
     WITH start, connected, REDUCE(s = 0, n IN nodes(path) | s + 1) AS distance,
          COUNT {{ (connected)--() }} AS degree
     RETURN 
@@ -48,6 +51,7 @@ def get_anchors_by_vector_similarity(session, vector, limit=SEMANTIC_ANCHOR_LIMI
     CALL db.index.vector.queryNodes('entity_vector_index', $limit, $vector)
     YIELD node, score
     WHERE score > $threshold
+      AND coalesce(node.is_active, true) = true
     RETURN elementId(node) AS node_id, node.name AS name, labels(node)[0] AS type, score
     ORDER BY score DESC
     """
