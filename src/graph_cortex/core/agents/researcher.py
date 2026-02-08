@@ -38,7 +38,12 @@ class ResearchAgent(BaseAgent):
         print(f"[{self.name}] Awaiting LLM response...")
         llm_response = await self.query_llm(user_input=user_query, context=context_string)
         
+        if llm_response.get("status") == "error":
+            final_answer = f"System Error: {llm_response.get('error')}"
+        else:
+            final_answer = llm_response.get("response", "Error generating response.")
+            
         return {
-            "answer": llm_response.get("response", "Error generating response."),
+            "answer": final_answer,
             "retrieval_metrics": retrieval_results
         }
