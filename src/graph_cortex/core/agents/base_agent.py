@@ -19,8 +19,8 @@ class BaseAgent:
         Sends a request to the deployed LLM Engine via Ray Serve handles.
         """
         try:
-            # Get a handle to the deployment
-            handle = serve.get_deployment("LLMEngineDeployment").get_handle()
+            # Get a handle to the deployment using Ray 2.9+ Application Handles
+            handle = serve.get_app_handle("LLMEngineDeployment")
             
             # Fire an asynchronous RPC
             response_ref = await handle.remote({
