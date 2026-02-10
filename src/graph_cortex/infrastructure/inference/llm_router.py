@@ -12,11 +12,16 @@ from graph_cortex.config.llm import GEMINI_API_KEY, LLM_MODEL
 
 @serve.deployment(num_replicas=1, ray_actor_options={"num_cpus": 1})
 class LLMEngineDeployment:
-    def __init__(self):
-        # Initialize the Gemini client
-        print(f"[LLM Router] Initializing Gemini Client with model: {LLM_MODEL}")
-        self.client = genai.Client(api_key=GEMINI_API_KEY)
-        self.model = LLM_MODEL
+    def __init__(self, api_key: str = None, model: str = None):
+        # Use dynamic injection for API key and model to bypass Ray worker caching
+        from graph_cortex.config.llm import GEMINI_API_KEY, LLM_MODEL
+        
+        target_key = api_key or GEMINI_API_KEY
+        target_model = model or LLM_MODEL
+        
+        print(f"[LLM Router] Initializing Gemini Client with model: {target_model}")
+        self.client = genai.Client(api_key=target_key)
+        self.model = target_model
         
     async def __call__(self, request: dict) -> dict:
         """
