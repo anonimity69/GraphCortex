@@ -50,9 +50,18 @@ class GraphMemoryEnv(gym.Env):
             if action == 0:  # NOOP
                 info["status"] = "skipping"
             elif action == 1:  # ADD
-                pass # Trigger neo4j MERGE logic (Implemented in next iteration)
+                name = action_kwargs.get("name", "NewNode")
+                label = action_kwargs.get("label", "Entity")
+                self.curation.merge_node(label=label, name=name, properties=action_kwargs.get("properties", {}))
+                info["status"] = f"added_{label}_{name}"
             elif action == 2:  # UPDATE
-                pass # Trigger neo4j property SET logic
+                node_id = action_kwargs.get("node_id")
+                props = action_kwargs.get("properties", {})
+                if node_id:
+                    self.curation.update_node(node_id=node_id, properties=props)
+                    info["status"] = f"updated_{node_id}"
+                else:
+                    info["status"] = "error_missing_node_id"
             elif action == 3:  # SOFT-DELETE
                 node_id = action_kwargs.get("node_id")
                 if node_id:

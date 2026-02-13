@@ -17,6 +17,8 @@ from graph_cortex.core.memory.manager import MemoryManager
 from graph_cortex.core.agents.researcher import ResearchAgent
 from graph_cortex.core.agents.summarizer import SummaryAgent
 from graph_cortex.infrastructure.inference.llm_router import LLMEngineDeployment
+from graph_cortex.core.rl.trainer import RLSkeletonTrainer
+from graph_cortex.infrastructure.db.neo4j_connection import get_session
 
 console = Console()
 
@@ -96,6 +98,42 @@ async def run_repl():
                 elif cmd == "/stats":
                     console.print("[bold cyan]Swarm Stats:[/] Ray Cluster Active. Gemini Router Bound. Researcher/Summarizer Alive.")
                     logging.info("User requested /stats.")
+                elif cmd == "/data":
+                    # DB Dashboard
+                    with get_session() as s:
+                        nodes = s.run("MATCH (n) RETURN labels(n)[0] as label, count(*) as count")
+                        node_str = " | ".join([f"{r['label']}: [bold]{r['count']}[/]" for r in nodes])
+                        
+                    # Dataset Dashboard
+                    ds_path = "data/rl_training/hotpot_qa_sample.jsonl"
+                    ds_count = 0
+                    if os.path.exists(ds_path):
+                        with open(ds_path, "r") as f:
+                            ds_count = sum(1 for _ in f)
+                    
+                    console.print(Panel(
+                        f"Graph Layer: {node_str}\n"
+                        f"RL Dataset: [bold yellow]{ds_count}[/] samples in '{ds_path}'",
+                        title="[bold green]Environment Dashboard[/]",
+                        border_style="green"
+                    ))
+                elif cmd == "/train":
+                    console.print("[bold yellow]Initiating RL Fine-Tuning Simulation...[/] (HotpotQA Dataset)")
+                    trainer = RLSkeletonTrainer()
+                    # Run a small batch to avoid quota exhaustion
+                    await asyncio.to_thread(trainer.run_training_loop, episodes=3)
+                    console.print("[bold green]Success:[/] RL Session complete. Local policy gradients cached.")
+                elif cmd == "/help":
+                    help_text = (
+                        "• [bold cyan]/help[/]    - Show this menu\n"
+                        "• [bold cyan]/data[/]    - Display Graph and Training dataset statistics\n"
+                        "• [bold cyan]/train[/]   - Run RL fine-tuning trial (Phase 4)\n"
+                        "• [bold cyan]/stats[/]   - Show active agent swarm status\n"
+                        "• [bold cyan]/history[/] - Show current session info\n"
+                        "• [bold cyan]/clear[/]   - Flush working memory and start new session\n"
+                        "• [bold cyan]/exit[/]    - Gracefully shutdown the swarm"
+                    )
+                    console.print(Panel(help_text, title="GraphCortex Commands", border_style="cyan"))
                 elif cmd in ("/quit", "/exit"):
                     break
                 else:
