@@ -147,7 +147,8 @@ async def run_repl():
                 research_result = await researcher.process_query(user_input)
                 agent_response = research_result["answer"]
             
-            console.print(Markdown(f"**Agent**: {agent_response}"))
+            console.print(f"[bold #22C55E]Agent:[/] ", end="")
+            console.print(Markdown(agent_response))
             console.print("")
             manager.working.add_message(session_id, role="agent", content=agent_response)
             logging.info(f"[Response Generated]")

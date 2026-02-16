@@ -1,5 +1,6 @@
 import json
 import re
+import logging
 from graph_cortex.core.agents.base_agent import BaseAgent
 from graph_cortex.config.llm import DEFAULT_SUMMARIZER_PROMPT
 
@@ -28,7 +29,7 @@ class SummaryAgent(BaseAgent):
         Queries the LLM for structured extraction of the conversation.
         """
         interaction_text = f"User: {user_input}\nAgent: {agent_response}"
-        print(f"[{self.name}] Extracting structural knowledge from interaction...")
+        logging.info(f"[{self.name}] Extracting structural knowledge from interaction...")
         
         llm_response = await self.query_llm(user_input=interaction_text)
         
@@ -42,8 +43,8 @@ class SummaryAgent(BaseAgent):
         try:
             extracted_data = json.loads(raw_text)
         except json.JSONDecodeError as e:
-            print(f"[{self.name}] Failed to parse JSON. Raw LLM Output:\n{raw_text}")
+            logging.error(f"[{self.name}] Failed to parse JSON. Raw LLM Output:\n{raw_text}")
             extracted_data = {"summary": "Extraction Failed.", "entities": []}
             
-        print(f"[{self.name}] Extraction complete. Found {len(extracted_data.get('entities', []))} semantic relationships.")
+        logging.info(f"[{self.name}] Extraction complete. Found {len(extracted_data.get('entities', []))} semantic relationships.")
         return extracted_data

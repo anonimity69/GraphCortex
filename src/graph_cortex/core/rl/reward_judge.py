@@ -5,6 +5,7 @@ a user's query after the Librarian Agent mutated the Graph context.
 """
 from google import genai
 import re
+import logging
 from graph_cortex.config.llm import GEMINI_API_KEY, LLM_MODEL
 
 class LLMRewardJudge:
@@ -45,9 +46,9 @@ class LLMRewardJudge:
                 # Clamp score
                 return max(0.0, min(1.0, score))
             else:
-                print(f"[Judge Warning] Could not find bracketed score. LLM Output: {response.text}")
+                logging.warning(f"[Judge Warning] Could not find bracketed score. LLM Output: {response.text}")
                 return 0.0
                 
         except Exception as e:
-            print(f"[Judge Error] API call failed: {str(e)}")
+            logging.error(f"[Judge Error] API call failed: {str(e)}")
             return 0.0
