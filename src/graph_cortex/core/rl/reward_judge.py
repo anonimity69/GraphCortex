@@ -6,7 +6,7 @@ a user's query after the Librarian Agent mutated the Graph context.
 from google import genai
 import re
 import logging
-from graph_cortex.config.llm import GEMINI_API_KEY, LLM_MODEL
+from graph_cortex.config.llm import GEMINI_API_KEY, LLM_MODEL, LLM_TEMPERATURE, LLM_MAX_TOKENS
 
 class LLMRewardJudge:
     def __init__(self):
@@ -24,7 +24,7 @@ class LLMRewardJudge:
 
     def evaluate_answer(self, question: str, ground_truth: str, agent_answer: str) -> float:
         """
-        Calls Gemini to grade the Agent's answer.
+        Calls the LLM to grade the Agent's answer.
         """
         full_prompt = (
             f"{self.eval_prompt}"
@@ -34,9 +34,14 @@ class LLMRewardJudge:
         )
         
         try:
+            from google.genai import types
             response = self.client.models.generate_content(
                 model=self.model,
-                contents=full_prompt
+                contents=full_prompt,
+                config=types.GenerateContentConfig(
+                    temperature=LLM_TEMPERATURE,
+                    max_output_tokens=LLM_MAX_TOKENS
+                )
             )
             
             # Extract score from brackets [X.XX] using regex

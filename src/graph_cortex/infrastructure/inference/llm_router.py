@@ -8,7 +8,8 @@ the downstream agent code.
 
 from ray import serve
 from google import genai
-from graph_cortex.config.llm import GEMINI_API_KEY, LLM_MODEL
+import logging
+from graph_cortex.config.llm import GEMINI_API_KEY, LLM_MODEL, LLM_TEMPERATURE, LLM_MAX_TOKENS
 
 @serve.deployment(num_replicas=1, ray_actor_options={"num_cpus": 1})
 class LLMEngineDeployment:
@@ -19,7 +20,7 @@ class LLMEngineDeployment:
         target_key = api_key or GEMINI_API_KEY
         target_model = model or LLM_MODEL
         
-        print(f"[LLM Router] Initializing Gemini Client with model: {target_model}")
+        logging.info(f"[LLM Router] Initializing LLM Client with model: {target_model}")
         self.client = genai.Client(api_key=target_key)
         self.model = target_model
         
@@ -40,9 +41,14 @@ class LLMEngineDeployment:
             
         try:
             import asyncio
+            from google.genai import types
             coro = self.client.aio.models.generate_content(
                 model=self.model,
-                contents=full_prompt
+                contents=full_prompt,
+                config=types.GenerateContentConfig(
+                    temperature=LLM_TEMPERATURE,
+                    max_output_tokens=LLM_MAX_TOKENS
+                )
             )
             
             # Bound the request to 12 seconds so that tenancity retry loops on 429 errors 
@@ -51,11 +57,11 @@ class LLMEngineDeployment:
             return {"status": "success", "response": response.text}
             
         except asyncio.TimeoutError:
-            error_msg = "API Timeout: Rate limits or quotas exceeded. Please check your Gemini limits."
-            print(f"[LLM Router Error] {error_msg}")
+            error_msg = "API Timeout: Rate limits or quotas exceeded. Please check your model provider limits."
+            logging.error(f"[LLM Router Error] {error_msg}")
             return {"status": "error", "error": error_msg}
         except Exception as e:
-            print(f"[LLM Router Error] {str(e)}")
+            logging.error(f"[LLM Router Error] {str(e)}")
             return {"status": "error", "error": str(e)}
 
 # Bind the deployment so it can be served via `serve run`

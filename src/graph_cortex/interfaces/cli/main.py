@@ -39,7 +39,7 @@ async def run_repl():
         # Explicitly reload .env to ensure the latest API keys are loaded into the current process
         load_dotenv(override=True)
         api_key = os.getenv("GEMINI_API_KEY")
-        model_name = os.getenv("LLM_MODEL", "gemini-2.0-flash")
+        model_name = os.getenv("LLM_MODEL")
 
         initialize_schema()
         
@@ -52,7 +52,7 @@ async def run_repl():
                 os.environ.pop("RAY_ADDRESS", None)
                 ray.init(ignore_reinit_error=True, log_to_driver=False, include_dashboard=False)
             
-        status.update("[bold #1D9E75]Deploying Gemini LLM Router via Ray Serve...[/]")
+        status.update("[bold #1D9E75]Deploying LLM Router via Ray Serve...[/]")
         serve.start(detached=True)
         # Use bind() parameters to force-feed the fresh API key into the Ray workers
         serve.run(LLMEngineDeployment.bind(api_key=api_key, model=model_name), name="LLMEngineDeployment", route_prefix="/llm")
