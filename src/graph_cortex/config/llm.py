@@ -30,7 +30,7 @@ RAY_ADDRESS = os.getenv("RAY_ADDRESS", "auto")
 # ─── Default System Prompts ─────────────────────────────────────────────────
 DEFAULT_RESEARCHER_PROMPT = os.getenv(
     "RESEARCHER_SYSTEM_PROMPT", 
-    "You are a Research Agent. Analyze the provided knowledge graph context and answer the user's question accurately."
+    "You are a Research Agent. Answer the user's question accurately. Prioritize the provided knowledge graph context if available. If the provided context is empty or insufficient, you MUST use your own general knowledge to generate a comprehensive answer so the system can learn from it."
 )
 
 DEFAULT_SUMMARIZER_PROMPT = os.getenv(

@@ -1,15 +1,41 @@
 import sys
+import os
 import asyncio
 import uuid
+import logging
+import warnings
+
+# --- Global Logging & Warning Suppression (Must execute BEFORE 3rd party imports) ---
+os.makedirs("Logs", exist_ok=True)
+logging.basicConfig(
+    filename='Logs/admin_system.log',
+    level=logging.INFO, 
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
+logging.info("--- Boot Sequence Started ---")
+
+def custom_formatwarning(message, category, filename, lineno, *args, **kwargs):
+    with open('Logs/warnings.log', 'a') as f:
+        f.write(f"{category.__name__}: {message} ({filename}:{lineno})\n")
+
+warnings.showwarning = custom_formatwarning
+os.environ["RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO"] = "0"
+os.environ["RAY_SERVE_LOG_LEVEL"] = "error"
+
+# Forcefully silence noisy third-party loggers BEFORE they initialize
+logging.getLogger("ray").setLevel(logging.ERROR)
+logging.getLogger("ray.serve").setLevel(logging.ERROR)
+logging.getLogger("uvicorn").setLevel(logging.ERROR)
+logging.getLogger("uvicorn.access").setLevel(logging.ERROR)
+# ---------------------------------------------------------------------------------
+
 import ray
 from ray import serve
 from dotenv import load_dotenv
-import logging
-import os
+# ---------------------------------------------------------------------------------
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.markdown import Markdown
 from rich.markdown import Markdown
 
 from graph_cortex.infrastructure.db.schema_migrations import initialize_schema
@@ -24,12 +50,15 @@ console = Console()
 
 # Stylized ASCII representation of the banner.svg SVG connections
 BANNER = """
-[bold #1a1a1a]Graph[/][bold #0F6E56]Cortex[/]
-[dim italic #6B7280]Distributed neuro-symbolic graph memory for AI agents[/]
+[bold #FFBF00] ██████╗ ██████╗  █████╗ ██████╗ ██╗  ██╗[/][bold #10B981]  ██████╗  ██████╗ ██████╗ ████████╗███████╗██╗  ██╗[/]
+[bold #FFBF00]██╔════╝ ██╔══██╗██╔══██╗██╔══██╗██║  ██║[/][bold #10B981] ██╔════╝ ██╔═══██╗██╔══██╗╚══██╔══╝██╔════╝╚██╗██╔╝[/]
+[bold #FFBF00]██║  ███╗██████╔╝███████║██████╔╝███████║[/][bold #10B981] ██║      ██║   ██║██████╔╝   ██║   █████╗   ╚███╔╝ [/]
+[bold #FFBF00]██║   ██║██╔══██╗██╔══██║██╔═══╝ ██╔══██║[/][bold #10B981] ██║      ██║   ██║██╔══██╗   ██║   ██╔══╝   ██╔██╗ [/]
+[bold #FFBF00]╚██████╔╝██║  ██║██║  ██║██║     ██║  ██║[/][bold #10B981] ╚██████╗ ╚██████╔╝██║  ██║   ██║   ███████╗██╔╝ ██╗[/]
+[bold #FFBF00] ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝[/][bold #10B981]  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝[/]
 
-    [#9FE1CB]o[/][dim #1D9E75]----[/][#CECBF6]o[/]                   [#CECBF6]o[/][dim #1D9E75]-[/][#9FE1CB]o[/]
-  [dim #1D9E75]/[/]       [dim #1D9E75]\\[/][#9FE1CB]o[/]                 [dim #1D9E75]/[/]  [dim #1D9E75]\\[/][#CECBF6]o[/]
-[#CECBF6]o[/][dim #1D9E75]--[/][#9FE1CB]o[/]          [#9FE1CB]o[/]         [#9FE1CB]o[/]       [#CECBF6]o[/]
+[dim italic #6B7280]          Distributed neuro-symbolic graph memory[/]
+[dim italic #6B7280]                        for AI agents[/]
 """
 
 async def run_repl():
@@ -47,10 +76,22 @@ async def run_repl():
         # Suppress massive ray dashboard logs on standard out for clean REPL
         if not ray.is_initialized():
             try:
-                ray.init(ignore_reinit_error=True, log_to_driver=False, include_dashboard=False)
+                ray.init(
+                    ignore_reinit_error=True, 
+                    log_to_driver=False, 
+                    include_dashboard=False,
+                    logging_level=logging.ERROR,
+                    configure_logging=True
+                )
             except ConnectionError:
                 os.environ.pop("RAY_ADDRESS", None)
-                ray.init(ignore_reinit_error=True, log_to_driver=False, include_dashboard=False)
+                ray.init(
+                    ignore_reinit_error=True, 
+                    log_to_driver=False, 
+                    include_dashboard=False,
+                    logging_level=logging.ERROR,
+                    configure_logging=True
+                )
             
         status.update("[bold #1D9E75]Deploying LLM Router via Ray Serve...[/]")
         serve.start(detached=True)
@@ -176,18 +217,7 @@ async def run_repl():
 
     console.print("\n[bold green]GraphCortex Swarm shutting down. Goodbye![/]")
 
-def setup_admin_logger():
-    """Sets up the split admin pipeline to a physical file so the REPL is never corrupted by debug prints."""
-    os.makedirs("Logs", exist_ok=True)
-    logging.basicConfig(
-        filename='Logs/admin_system.log',
-        level=logging.INFO, 
-        format='%(asctime)s [%(levelname)s] %(message)s'
-    )
-    logging.info("--- Boot Sequence Started ---")
-
 def main():
-    setup_admin_logger()
     try:
         asyncio.run(run_repl())
     except KeyboardInterrupt:
