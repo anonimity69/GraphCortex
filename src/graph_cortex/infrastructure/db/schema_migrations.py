@@ -19,6 +19,9 @@ def initialize_schema():
         "CREATE CONSTRAINT IF NOT EXISTS FOR (e:Entity) REQUIRE e.name IS UNIQUE",
         "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Concept) REQUIRE c.name IS UNIQUE",
         
+        # Fulltext Lexical Search (Hybrid Engine)
+        "CREATE FULLTEXT INDEX hybrid_entity_concept IF NOT EXISTS FOR (n:Entity|Concept) ON EACH [n.name]",
+        
         # Global Soft Delete Backfill
         "MATCH (n) WHERE n.is_active IS NULL SET n.is_active = true"
     ]

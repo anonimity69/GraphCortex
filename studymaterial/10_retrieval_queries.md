@@ -11,21 +11,23 @@ In Clean Architecture, the **infrastructure layer** contains all database-specif
 
 ---
 
-## Query 1: `get_anchor_nodes_by_name()` — The Lexical Trigger
+## Query 1: `get_anchors_by_fulltext()` — The BM25 Hybrid Trigger
 
 ```python
-def get_anchor_nodes_by_name(session, entity_names, limit=5):
+def get_anchors_by_fulltext(session, search_string, limit=5):
     """
-    Finds anchor nodes (Entities or Concepts) matching specific string names.
-    This acts as the Lexical (BM25-style) trigger in the Dual-Trigger initialization.
+    Finds anchor nodes (Entities or Concepts) using a Fulltext BM25 index search.
+    This replaces the exact substring match with probabilistic keyword relevance.
     """
 ```
 
 ```python
     query = """
-    UNWIND $names AS name
-    MATCH (n) WHERE (n:Entity OR n:Concept) AND toLower(n.name) CONTAINS toLower(name)
-    RETURN elementId(n) AS node_id, n.name AS name, labels(n)[0] AS type
+    CALL db.index.fulltext.queryNodes("hybrid_entity_concept", $search_string)
+    YIELD node, score
+    WHERE coalesce(node.is_active, true) = true
+    RETURN elementId(node) AS node_id, node.name AS name, labels(node)[0] AS type, score
+    ORDER BY score DESC
     LIMIT $limit
     """
 ```
@@ -34,21 +36,16 @@ def get_anchor_nodes_by_name(session, entity_names, limit=5):
 
 | Line | What It Does |
 |---|---|
-| `UNWIND $names AS name` | Takes the input list `["System Design", "Clean Architecture"]` and iterates over it, processing each term one at a time. |
-| `MATCH (n)` | Find any node `n` in the database. |
-| `WHERE (n:Entity OR n:Concept)` | Filter to only Entity and Concept nodes. Ignore Message, Event, Interaction nodes. |
-| `AND toLower(n.name) CONTAINS toLower(name)` | **Case-insensitive substring matching.** `"clean architecture"` matches `"Clean Architecture"`. This is the "lexical" trigger — pure string matching, no ML. |
-| `elementId(n) AS node_id` | Returns Neo4j's internal element ID (used for subsequent traversal). |
-| `labels(n)[0] AS type` | Returns the node's first label (`"Entity"` or `"Concept"`). |
-| `LIMIT $limit` | Cap results to prevent returning thousands of matches. |
+| `CALL db.index.fulltext.queryNodes(...)` | Executes Neo4j's native Lucene-based BM25 engine to search the `hybrid_entity_concept` index. |
+| `YIELD node, score` | Retrieves the nodes alongside their probabilistic keyword density scores. |
+| `WHERE coalesce(node.is_active, true) = true` | Excludes soft-deleted nodes. |
+| `ORDER BY score DESC LIMIT $limit` | Returns only the most contextually relevant lexical hits. |
 
 ```python
-    result = session.run(query, names=entity_names, limit=limit)
+    result = session.run(query, search_string=search_string, limit=limit)
     return [record.data() for record in result]
 ```
-Converts Neo4j records to Python dicts: `[{"node_id": "4:abc:7", "name": "Clean Architecture", "type": "Entity"}]`
-
-**When this query FAILS to find matches** (lexical miss), the Retrieval Engine falls back to semantic vector search.
+Converts Neo4j records to Python dicts: `[{"node_id": "4:abc:7", "name": "Clean Architecture", "type": "Entity", "score": 2.45}]`
 
 ---
 
@@ -167,26 +164,26 @@ Returns:
 ## How All Three Queries Connect
 
 ```
-User query: ["System Design"]
+User query: "System Design"
                 │
-                ▼
-    ┌── get_anchor_nodes_by_name() ──┐
-    │   "System Design" CONTAINS?    │
-    │   Result: [] (empty - no match)│
-    └────────────┬───────────────────┘
-                 │ MISS
-                 ▼
-    ┌── get_anchors_by_vector_similarity() ──┐
-    │   Encode "System Design" → 768-dim     │
-    │   Cosine search the vector index        │
-    │   Result: ["Software Design" (0.95),    │
-    │            "Clean Architecture" (0.82)] │
-    └────────────┬───────────────────────────┘
-                 │ HIT
-                 ▼
-    ┌── execute_spreading_activation_hop() ──┐
-    │   BFS from "Software Design" (3 hops)  │
-    │   BFS from "Clean Architecture" (3 hops)│
-    │   Returns distance + degree for each    │
-    └─────────────────────────────────────────┘
+   ┌────────────┴─────────────┐
+   ▼ (Parallel Execution)     ▼
+┌── get_anchors_by_fulltext() ──┐    ┌── get_anchors_by_vector_similarity() ──┐
+│ Query Lucene BM25 index       │    │ Encode "System Design" → 768-dim       │
+│ Result: [] (empty match)      │    │ Cosine search the vector index         │
+│                               │    │ Result: ["Software Design" (0.95),     │
+│                               │    │          "Clean Architecture" (0.82)]  │
+└────────────┬──────────────────┘    └────────────────┬───────────────────────┘
+             │                                        │
+             └───────────────────┬────────────────────┘
+                                 ▼
+                     ┌── Anchor Deduplication ─────────┐
+                     │ Deduplicate nodes by identity.  │
+                     └───────────┬─────────────────────┘
+                                 ▼
+                    ┌── execute_spreading_activation_hop() ──┐
+                    │   BFS from "Software Design" (3 hops)  │
+                    │   BFS from "Clean Architecture" (3 hops)│
+                    │   Returns distance + degree for each    │
+                    └─────────────────────────────────────────┘
 ```

@@ -16,7 +16,8 @@
   <img src="https://img.shields.io/badge/arch-clean%20architecture-1D9E75?style=flat-square&labelColor=085041" />
   <img src="https://img.shields.io/badge/db-neo4j-7F77DD?style=flat-square&labelColor=3C3489" />
   <img src="https://img.shields.io/badge/compute-ray%20serve-1D9E75?style=flat-square&labelColor=085041" />
-  <img src="https://img.shields.io/badge/rl-grpo%20fine--tuning-7F77DD?style=flat-square&labelColor=3C3489" />
+  <img src="https://img.shields.io/badge/search-hybrid%20bm25-7F77DD?style=flat-square&labelColor=3C3489" />
+  <img src="https://img.shields.io/badge/rl-grpo%20fine--tuning-1D9E75?style=flat-square&labelColor=085041" />
 </p>
 
 ---
@@ -30,9 +31,10 @@ It automatically extracts structural facts, tracks chronological interaction his
 | 🧠 **Working Memory** | Real-time short-term buffer for active interactions. |
 | 📅 **Episodic Memory** | Sequential event summaries compressed for long-term recall. |
 | 🕸️ **Semantic Memory** | Global entity-level abstractions and factual relationships. |
-| 🔍 **Dual-Trigger Retrieval** | Hybrid Lexical + Semantic (Vector) triggers for robust context anchors. |
+| 🔍 **Hybrid Retrieval** | **(Phase 5)** Parallel BM25 Fulltext + Dense Vector semantic triggers for absolute precision. |
 | ⚡ **Spreading Activation** | Neighbors-of-neighbors retrieval bounded by mathematical Lateral Inhibition. |
 | ⚖️ **RL Librarian** | Phase 4 Fine-Tuning loop that rewards the agent for higher reasoning accuracy. |
+| 🔐 **Deterministic LLM** | Configuration-driven, timeout-resistant routing (Supports Gemma 4 31B Open Models). |
 
 ---
 

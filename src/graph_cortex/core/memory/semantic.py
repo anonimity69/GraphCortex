@@ -1,4 +1,5 @@
 from typing import List, Dict
+import re
 from graph_cortex.infrastructure.db.neo4j_connection import get_session
 from graph_cortex.config.retrieval import DEFAULT_RELATIONSHIP_TYPE
 from graph_cortex.config.embedding import encode as encode_embedding
@@ -39,7 +40,9 @@ class SemanticMemory:
         """
         Extracts structured semantic knowledge from an event and calculates vector embeddings.
         """
-        rel_type = relationship_type.upper().replace(" ", "_")
+        raw_rel = relationship_type.upper().replace(" ", "_")
+        # Cypher string injection protection: strip all non-alphanum chars except underscores
+        rel_type = re.sub(r'[^A-Z0-9_]', '', raw_rel)
         
         entity_vector = self._get_embedding(entity_name)
         concept_vector = self._get_embedding(concept_name)

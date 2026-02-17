@@ -22,28 +22,44 @@ class RetrievalEngine:
     def retrieve(self, query_terms: list):
         """
         Executes Dual-Trigger Spreading Activation.
-        1. Lexical search for anchors. (Fallback to Semantic Vector Search)
+        1. Hybrid Anchor Search (Parallel BM25 Fulltext + Semantic Vector Match)
         2. Spreading activation (BFS traversal) from anchors.
         3. Apply lateral inhibition (Energy decay via Fan effect).
         """
-        # Step 1A: Lexical Trigger
+        import re
+        search_query = query_terms[0] if query_terms else ""
+        
+        # Strip punctuation to prevent Neo4j Lucene syntax errors during BM25 parsing
+        bm25_safe_query = re.sub(r'[^A-Za-z0-9\s]', '', search_query).strip()
+        
+        # Step 1: Hybrid Trigger
         with get_session() as session:
-            anchors = get_anchor_nodes_by_name(session, query_terms, limit=LEXICAL_ANCHOR_LIMIT)
+            # 1A: Fulltext BM25 Search
+            bm25_anchors = []
+            if bm25_safe_query:
+                # Imports inside retrieve to avoid circular dependencies if any
+                from graph_cortex.infrastructure.db.queries.retrieval_queries import get_anchors_by_fulltext, get_anchors_by_vector_similarity
+                bm25_anchors = get_anchors_by_fulltext(session, bm25_safe_query)
             
-            # Step 1B: Semantic Vector Fallback
+            # 1B: Dense Vector Semantic Search
+            from graph_cortex.infrastructure.db.queries.retrieval_queries import get_anchors_by_vector_similarity
+            vector = encode_embedding(search_query)
+            semantic_anchors = get_anchors_by_vector_similarity(session, vector)
+            
+            # Combine and deduplicate anchors by node_id
+            unique_anchors = {}
+            for a in bm25_anchors:
+                unique_anchors[a["node_id"]] = a
+            for a in semantic_anchors:
+                unique_anchors[a["node_id"]] = a
+                
+            anchors = list(unique_anchors.values())
+            
             if not anchors:
-                self.logger.info(f"Lexical Miss for '{query_terms}'. Initiating Semantic Vector Fallback.")
-                
-                vector = encode_embedding(query_terms[0])
-                anchors = get_anchors_by_vector_similarity(session, vector, limit=SEMANTIC_ANCHOR_LIMIT)
-                
-                if not anchors:
-                    self.logger.warning(f"Semantic Fallback Miss for '{query_terms}'. No anchors found.")
-                    return {"status": "Miss", "anchors": [], "network": [], "inhibited_hubs": []}
-                else:
-                    self.logger.info(f"Semantic Fallback Success! Found semantic anchors: {anchors}")
+                self.logger.warning(f"Hybrid Search Miss for '{search_query}'. No anchors found.")
+                return {"status": "Miss", "anchors": [], "network": [], "inhibited_hubs": []}
             else:
-                self.logger.info(f"Lexical Hit for '{query_terms}'. Found exact anchors: {anchors}")
+                self.logger.info(f"Hybrid Search Success! Found ({len(bm25_anchors)} BM25, {len(semantic_anchors)} Semantic) unique anchors: {anchors}")
             # Step 2: Spreading Activation from Anchors
             activated_network = []
             dropped = []

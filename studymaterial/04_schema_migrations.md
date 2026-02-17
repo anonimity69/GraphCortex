@@ -70,10 +70,16 @@ We use a constraint on `event_id` because every event must be globally unique (w
 ```python
         # Semantic Memory Constraints
         "CREATE CONSTRAINT IF NOT EXISTS FOR (e:Entity) REQUIRE e.name IS UNIQUE",
-        "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Concept) REQUIRE c.name IS UNIQUE"
+        "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Concept) REQUIRE c.name IS UNIQUE",
+
+        # Fulltext Lexical Search (Hybrid Engine)
+        "CREATE FULLTEXT INDEX hybrid_entity_concept IF NOT EXISTS FOR (n:Entity|Concept) ON EACH [n.name]",
     ]
 ```
 Entities and Concepts are identified by their `name` (e.g., `"Clean Architecture"`). The uniqueness constraint ensures that `MERGE (e:Entity {name: "Clean Architecture"})` either finds the existing node or creates a new one — never a duplicate.
+
+**The Hybrid Fulltext Index**
+`(Phase 5 Upgrade)` We explicitly deploy `CREATE FULLTEXT INDEX` to enable native Lucene BM25 indexing spanning both Entities and Concepts. This is what powers the Lexical half of our Hybrid Retrieval Engine—giving the system exact needle-in-the-haystack keyword resolution while the Vector dimensions handle the broad semantic abstractions.
 
 #### Part 2: Vector Indexes (Phase 3)
 

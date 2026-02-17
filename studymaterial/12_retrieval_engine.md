@@ -9,10 +9,10 @@
 
 The `RetrievalEngine` is the **cognitive core** of GraphCortex. When the AI needs to recall information, this engine:
 
-1. **Finds anchor nodes** using dual triggers (lexical string match → semantic vector fallback)
-2. **Fans outward** from anchors using BFS traversal (Spreading Activation)
-3. **Calculates energy decay** for every discovered node (Lateral Inhibition)
-4. **Deduplicates** overlapping networks when multiple anchors activate
+1. **Finds anchor nodes** using a parallel **Hybrid Search** (Concurrent BM25 Fulltext Lexical + Dense Semantic Vector match)
+2. **Deduplicates** the starting anchors.
+3. **Fans outward** from anchors using BFS traversal (Spreading Activation)
+4. **Calculates energy decay** for every discovered node (Lateral Inhibition)
 5. **Returns** a clean, filtered knowledge sub-graph
 
 ---
@@ -65,49 +65,30 @@ class RetrievalEngine:
 
 ### The `retrieve()` Method — Step by Step
 
-#### Step 1A: Lexical Trigger
+#### Step 1: Hybrid Trigger (Parallel Search)
+
+The engine pulls the raw query and immediately sanitizes it to support Lucene syntax parsing for BM25 matching.
 
 ```python
     def retrieve(self, query_terms: list):
-        # Step 1A: Lexical Trigger
+        import re
+        search_query = query_terms[0] if query_terms else ""
+        
+        # Strip punctuation to prevent Neo4j Lucene syntax errors during BM25 parsing
+        bm25_safe_query = re.sub(r'[^A-Za-z0-9\s]', '', search_query).strip()
+        
         with get_session() as session:
-            anchors = get_anchor_nodes_by_name(session, query_terms)
+            # 1A: Fulltext BM25 Search
+            bm25_anchors = get_anchors_by_fulltext(session, bm25_safe_query)
+            
+            # 1B: Dense Vector Semantic Search
+            vector = encode_embedding(search_query)
+            semantic_anchors = get_anchors_by_vector_similarity(session, vector)
 ```
 
-First attempt: Try to find nodes whose names contain the query string. If the user searches for `["Clean Architecture"]`, this will find the Entity directly.
-
-**Result:** A list of anchor dicts, or an empty list if nothing matched.
-
-#### Step 1B: Semantic Vector Fallback
-
-```python
-            # Step 1B: Semantic Vector Fallback
-            if not anchors:
-                self.logger.info(f"Lexical Miss for '{query_terms}'. Initiating Semantic Vector Fallback.")
-                print(f"\n[!] Lexical miss for '{query_terms}'. Activating Semantic Vector Fallback...")
-```
-
-**The fallback trigger.** If lexical search found nothing (user searched `["System Design"]` but no node has that exact name), we switch to semantic search.
-
-The event is both:
-- **Logged** to the `/Logs` file for post-mortem analysis
-- **Printed** to stdout for immediate feedback
-
-```python
-                if not self.semantic_model:
-                    self.semantic_model = SentenceTransformer('BAAI/bge-base-en-v1.5', device='mps')
-```
-**Lazy loading.** The model is only loaded when actually needed (lexical miss). If lexical search always succeeds, the model never loads — saving 2-3 seconds of startup time and ~500MB of RAM.
-
-`device='mps'` routes computation through Apple Silicon's Metal Performance Shaders GPU.
-
-```python
-                vector = self.semantic_model.encode(query_terms[0]).tolist()
-                anchors = get_anchors_by_vector_similarity(session, vector, limit=2)
-```
-1. Encode the first query term into a 768-dimensional vector.
-2. Pass it to Neo4j's native vector index for cosine similarity search.
-3. Returns up to 2 anchors that exceed the 0.65 similarity threshold.
+The system executes BOTH searches simultaneously:
+1. **BM25 Lexical Node Match**: High-precision detection of rigid keywords (like vault codes or chemistry elements) without semantic distraction.
+2. **Embedding Vector Cosine Search**: Broad abstraction clustering. Finding "Software Design" when the user asks about "System Architecture".
 
 ```python
                 if not anchors:
@@ -212,23 +193,27 @@ From "Clean Architecture" BFS: {"name": "Event_001", "AE": 0.36}
 User: "System Design"
          │
          ▼
-┌─ STEP 1A: LEXICAL TRIGGER ─────────────────────┐
-│ Query: MATCH (n) WHERE n.name CONTAINS          │
-│        "System Design"                          │
+┌─ STEP 1A: BM25 FULLTEXT LEXICAL SEARCH ─────────┐
+│ Clean "System Design" (strip punctuation)       │
+│ Query Neo4j Lucene Fulltext index               │
 │ Result: [] (MISS — no exact match)              │
 └──────────────────────┬──────────────────────────┘
-                       │
+                       │ Concurrent Execution
+┌─ STEP 1B: DENSE VECTOR SEMANTIC SEARCH ─────────┐
+│ Encode "System Design" → 768-dim vector         │
+│ Query Neo4j vector index (cosine search)        │
+│ Result: ["Software Design" (0.95),              │
+│          "Clean Architecture" (0.82)]           │
+└──────────────────────┬──────────────────────────┘
                        ▼
-┌─ STEP 1B: SEMANTIC VECTOR FALLBACK ─────────────┐
-│ Encode "System Design" → 768-dim vector (MPS)   │
-│ Query Neo4j vector index (cosine search)         │
-│ Result: ["Software Design" (0.95),               │
-│          "Clean Architecture" (0.82)]            │
+┌─ STEP 1C: ANCHOR DEDUPLICATION ─────────────────┐
+│ Merge the BM25 and Semantic Anchor sets         │
+│ Keep unique nodes by node_id                    │
 └──────────────────────┬──────────────────────────┘
                        │
-         ┌─────────────┼──────────────┐
-         │                            │
-         ▼                            ▼
+          ┌────────────┴─────────────┐
+          │                          │
+          ▼                          ▼
 ┌─ STEP 2: BFS FROM ──┐  ┌─ STEP 2: BFS FROM ──────┐
 │ "Software Design"   │  │ "Clean Architecture"     │
 │ Depth: 3 hops       │  │ Depth: 3 hops            │
