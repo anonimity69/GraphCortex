@@ -1,5 +1,5 @@
 from graph_cortex.infrastructure.db.neo4j_connection import get_session
-from graph_cortex.infrastructure.db.queries.retrieval_queries import get_anchor_nodes_by_name, execute_spreading_activation_hop, get_anchors_by_vector_similarity
+from graph_cortex.infrastructure.db.queries.retrieval_queries import execute_spreading_activation_hop
 from graph_cortex.core.retrieval.inhibition import apply_lateral_inhibition
 from graph_cortex.config.logger import get_retrieval_logger
 from graph_cortex.config.embedding import encode as encode_embedding
