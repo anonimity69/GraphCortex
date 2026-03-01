@@ -160,7 +160,7 @@ async def run_repl():
                     ))
                 elif cmd == "/train":
                     console.print("[bold yellow]Initiating RL Fine-Tuning Simulation...[/] (HotpotQA Dataset)")
-                    trainer = RLSkeletonTrainer()
+                    trainer = RLPyTorchTrainer()
                     # Run a small batch to avoid quota exhaustion
                     await asyncio.to_thread(trainer.run_training_loop, episodes=3)
                     console.print("[bold green]Success:[/] RL Session complete. Local policy gradients cached.")
