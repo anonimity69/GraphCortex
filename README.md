@@ -23,68 +23,83 @@
 ---
 
 GraphCortex is a neuro-symbolic memory and context layer for advanced AI agents. It solves the limitations of flat vector databases by combining a **Multi-Agent Swarm** with a **Neo4j Knowledge Graph** and **Reinforcement Learning (RL)** optimization.
+# GraphCortex 🧠
 
-It automatically extracts structural facts, tracks chronological interaction histories, and uses **Spreading Activation** to retrieve deeply connected sub-graphs—now optimized by an RL-driven "Librarian" that curates the graph for maximum logic density.
+**The self-optimizing, autonomous memory layer for AI agents.**
 
-| | |
-|---|---|
-| 🧠 **Working Memory** | Real-time short-term buffer for active interactions. |
-| 📅 **Episodic Memory** | Sequential event summaries compressed for long-term recall. |
-| 🕸️ **Semantic Memory** | Global entity-level abstractions and factual relationships. |
-| 🔍 **Hybrid Retrieval** | **(Phase 5)** Parallel BM25 Fulltext + Dense Vector semantic triggers for absolute precision. |
-| ⚡ **Spreading Activation** | Neighbors-of-neighbors retrieval bounded by mathematical Lateral Inhibition. |
-| 🕵️ **RL Librarian** | **(Phase 6-8)** Production PyTorch policy that autonomously optimizes graph topology and prunes noise. |
-| 🔐 **Deterministic LLM** | Configuration-driven, timeout-resistant routing (Supports Gemma 4 31B Open Models). |
+![GraphCortex Demo](./assets/demo.gif)
+
+[Website](https://graphcortex.ai) | [Documentation](https://docs.graphcortex.ai) | [Discord](https://discord.gg/graphcortex)
 
 ---
 
-## 🏛️ Architecture: Distributed Swarm
-
-GraphCortex runs on a strictly decoupled, multi-agent architecture powered by **Ray Serve**:
-
-*   **Researcher Agent**: Navigates graph topology and executes hybrid retrieval.
-*   **Summarizer Agent**: Background actor that extracts knowledge without blocking the user.
-*   **Librarian Agent (RL)**: Self-optimizing curator that prunes redundant nodes (Auto-sanitizes error artifacts).
-*   **Reward Judge**: LLM-as-a-Judge pipeline that grades agent answers against ground truth.
+### 🔥 The self-healing memory grid that improves while you sleep.
+GraphCortex is not just another RAG wrapper. It is a distributed, neuro-symbolic memory grid that actively optimizes its own knowledge structure using Reinforcement Learning. While traditional knowledge graphs decay and become noisy, GraphCortex actually gets smarter the more it’s used.
 
 ---
 
-## 🚀 Getting Started
-
-GraphCortex is fully executable locally on Mac/Linux with Neo4j.
-
-### Installation
-1.  **Clone & Environment**:
-    ```bash
-    pip install -r requirements.txt
-    cp .env.example .env # Add your GEMINI_API_KEY and NEO4J credentials
-    ```
-2.  **Dataset Prep** (For Phase 4 Training):
-    ```bash
-    python scripts/prepare_rl_dataset.py # Downloads full HotpotQA training split (90k+ samples)
-    ```
-3.  **Start the Swarm**:
-    ```bash
-    python src/graph_cortex/interfaces/cli/main.py
-    ```
-
-### Interactive CLI Commands
-*   `/help` - Show all available commands.
-*   `/data` - Live dashboard of Neo4j node counts and RL dataset status.
-*   `/train` - **Live RL Session**. Fine-tunes the Librarian policy using local MPS/GPU acceleration.
-*   `/curate` - **Active Curation**. Manually triggers the Librarian to optimize graph topology.
-*   `/clear` - Flush working memory.
-*   `/exit` - Graceful shutdown with background task synchronization.
+### 🧠 The Problem: Knowledge Decay
+Most AI agent memory systems (RAG, Vector DBs, Static Knowledge Graphs) suffer from three "agent-killing" problems:
+1. **Graph Noise**: Automated extraction creates redundant, fragmented, or conflicting nodes.
+2. **Reasoning Staleness**: Information that was relevant 10 minutes ago becomes a bottleneck for current reasoning.
+3. **Retrieval Friction**: Vector-only search misses the complex relationships, while standard Graphs are too rigid to adapt.
 
 ---
 
-## 🎯 Why GraphCortex?
-
-**Standard RAG is flat.** Vector databases retrieve isolated chunks but lose the "topology" of your problem. GraphCortex uses **Persistent Neo4j Topology** and **Active Learning** to ensure your AI understands that "User A belongs_to StartUp Y", and can deduce multi-hop structural logic without hallucinations.
-
-Read the full technical breakdown: **[DECISIONS.md](./DECISIONS.md)**
+### ⚡ The Solution: Autonomous Intelligence
+GraphCortex introduces the **Librarian Swarm**—a fleet of background agents that treat your knowledge graph like a living organism.
+* **Self-Optimizing**: Uses a PyTorch-based RL policy to decide which nodes to merge, prune, or strengthen.
+* **Heuristic Cleansing**: Automatically identifies and soft-deletes "Rate Limit" errors, system noise, and hallucinations.
+* **Distributed & Scalable**: Orchestrated via Ray Serve to handle massive memory loads across multiple LLM backends.
 
 ---
+
+### 🤖 How It Works
+1. **Researcher Agent**: Interprets user intent and navigates the Graph Topology to find both semantic matches and structural relationships.
+2. **Summarizer Agent**: Consolidates new interactions into high-density episodic events, extracting entities and relations in the background.
+3. **Librarian Agent (The Brain)**: Runs a continuous RL loop. It observes the "Graph Heat" and applies mutations (ADD, UPDATE, DELETE) to improve the global reasoning score.
+
+---
+
+### 🚀 Quickstart: The "Aha" Moment
+Launch the swarm and watch the Librarian optimize your memory in real-time.
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Start the Swarm (REPL)
+python src/graph_cortex/interfaces/cli/main.py
+```
+
+**Try this interaction:**
+1. **User >** "Add a memory about the Voyager 1 mission status."
+2. **System >** *Researcher saves the node... Summarizer extracts relationships...*
+3. **Wait 60s >** *The background Librarian wakes up, identifies a redundant 'Voyager' tag, merges it, and cleans up a stray rate-limit error.*
+4. **User >** `/curate` -> *Watch the RL policy manually optimize the mission topology.*
+
+---
+
+### 🎯 Use Cases
+* **Long-Term Agent Memory**: Give your agents a memory that doesn't just grow—it evolves.
+* **Self-Healing Knowledge Bases**: Maintenance-free KGs for technical documentation or complex research.
+* **Reasoning-Heavy Applications**: Systems that require multi-hop inference across dynamic, changing datasets.
+
+---
+
+### 🛠️ The Stack
+* **Orchestration**: Ray Serve & Asyncio (High-concurrency agent swarm).
+* **Graph Engine**: Neo4j (Neuro-symbolic storage).
+* **Intelligence**: PyTorch (Local RL Policy training & inference).
+* **Inference**: Gemini / LLM Routing (Provider-agnostic).
+
+---
+
+### 🧩 Why This Matters
+Storage is cheap, but **attention is expensive**. The future of AI isn't about storing more data—it's about building systems that know what to forget, what to prioritize, and how to organize themselves for the next reasoning step. GraphCortex is building that nervous system.
+
+---
+*Built for the next generation of truly autonomous agents.*
 
 <p align="center">
   <strong>Give your AI a structural brain. It's about time.</strong>

@@ -46,6 +46,7 @@ from graph_cortex.core.agents.librarian import LibrarianAgent
 from graph_cortex.infrastructure.inference.llm_router import LLMEngineDeployment
 from graph_cortex.core.rl.trainer import RLPyTorchTrainer
 from graph_cortex.infrastructure.db.neo4j_connection import get_session
+from rich.table import Table
 
 console = Console()
 
@@ -166,6 +167,21 @@ async def run_repl():
                     logging.info("User requested /history.")
                 elif cmd == "/stats":
                     console.print("[bold cyan]Swarm Stats:[/] Ray Cluster Active. Gemini Router Bound. Researcher/Summarizer/Librarian Alive.")
+                elif cmd == "/monitor":
+                    stats = librarian.get_stats()
+                    
+                    table = Table(title="[bold purple]Librarian Swarm Monitor[/]", border_style="purple")
+                    table.add_column("Metric", style="cyan")
+                    table.add_column("Value", style="bold white")
+                    
+                    table.add_row("Nodes Sanitized (Error Purge)", str(stats["sanitized_nodes"]))
+                    table.add_row("Total Curation Cycles", str(stats["total_curations"]))
+                    table.add_row("Actions: NOOP", str(stats["actions"]["NOOP"]))
+                    table.add_row("Actions: ADD", str(stats["actions"]["ADD"]))
+                    table.add_row("Actions: UPDATE", str(stats["actions"]["UPDATE"]))
+                    table.add_row("Actions: DELETE", str(stats["actions"]["DELETE"]))
+                    
+                    console.print(Panel(table, border_style="purple"))
                 elif cmd == "/curate":
                     console.print("[bold yellow]Librarian Agent analyzing Graph topology...[/]")
                     context = f"Session {session_id} active. Continuous reasoning required."
@@ -202,6 +218,7 @@ async def run_repl():
                         "• [bold cyan]/train[/]   - Run RL fine-tuning trial (Phase 4)\n"
                         "• [bold cyan]/stats[/]    - Show system operational health\n"
                         "• [bold cyan]/curate[/]   - Manually trigger the [bold purple]Librarian RL Agent[/] to optimize graph topology\n"
+                        "• [bold cyan]/monitor[/]  - Live dashboard of Librarian sanitization & curation metrics\n"
                         "• [bold cyan]/history[/] - Show current session info\n"
                         "• [bold cyan]/clear[/]   - Flush working memory and start new session\n"
                         "• [bold cyan]/exit[/]    - Gracefully shutdown the swarm"
