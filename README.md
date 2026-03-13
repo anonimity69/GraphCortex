@@ -65,11 +65,19 @@ Handles every query. Uses a Spreading Activation algorithm with Lateral Inhibiti
 Runs asynchronously after each conversation turn. Extracts entities and relationships from new interactions and wires them into the Episodic memory timeline without blocking the main thread.
 
 ### Librarian Agent *(the core innovation)*
-Runs a continuous RL loop in the background. It observes **Graph Heat**—a composite signal built from node access frequency, structural centrality, and retrieval success—and applies three operations:
+Runs a continuous RL loop in the background. It observes **Graph Heat = weighted combination of node access frequency, duplication density, and edge inconsistency**—a composite signal built from node access frequency, structural centrality, and retrieval success—and applies three operations:
 
 - **Merge** — collapses duplicate or near-duplicate nodes into canonical representations
 - **Prune** — soft-deletes stale, low-signal, or erroneous context (including extraction noise and rate-limit artifacts)
 - **Strengthen** — reinforces edges between nodes that consistently co-appear in successful reasoning chains
+
+RL Formulation (Simplified)
+
+State: current graph structure (nodes, edges, duplication metrics)  
+Action: merge nodes | prune edges | reinforce relationships  
+Reward: improved retrieval accuracy + reduced redundancy  
+
+Training: batch updates based on observed query performance
 
 The policy is trained via GRPO fine-tuning. Better graph usage → stronger reward signal → smarter optimization. It learns what good memory looks like for your specific workload.
 
@@ -82,6 +90,11 @@ The policy is trained via GRPO fine-tuning. Better graph usage → stronger rewa
 | Semantic Memory | Distilled, stable world knowledge |
 
 ---
+## Why this works:
+
+- Merging duplicate nodes reduces context fragmentation  
+- Cleaner graph → more relevant subgraph retrieval  
+- Better retrieval → higher-quality LLM responses  
 
 ## Quickstart
 
