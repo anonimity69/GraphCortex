@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   neo4j:
     image: neo4j:5.18.1
@@ -21,49 +19,10 @@ services:
       - ./data/neo4j/plugins:/plugins
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-
-  ray-head:
-    image: rayproject/ray:2.9.0-py310
-    container_name: ray_head_nsdmg
-    platform: linux/arm64
-    command: bash -c "ray start --head --dashboard-host=0.0.0.0 --port=6379 --dashboard-port=8265 --block"
-    ports:
-      - "8265:8265" # Ray Dashboard
-      # - "8000:8000" # Ray Serve HTTP port - Port 8000 is now for the FastAPI swarm interface
-    shm_size: 2g
-
-  ray-worker:
-    image: rayproject/ray:2.9.0-py310
-    container_name: ray_worker_nsdmg
-    platform: linux/arm64
-    command: bash -c "ray start --address=ray-head:6379 --block"
-    depends_on:
-      - ray-head
-    shm_size: 2g
-
-  graphcortex_api:
-    build: .
-    container_name: graphcortex_api
-    platform: linux/arm64
-    command: uvicorn graph_cortex.interfaces.api.app:app --host 0.0.0.0 --port 8000
-    volumes:
-      - .:/app
-      - ./Logs:/app/Logs
-    env_file:
-      - .env
-    environment:
-      - RAY_ADDRESS=ray://ray-head:10001
-      - PYTHONPATH=/app/src
-    ports:
-      - "8000:8000"
-    depends_on:
-      neo4j:
-        condition: service_healthy
-      ray-head:
-        condition: service_started
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
   graphcortex:
     build: .
@@ -74,14 +33,11 @@ services:
     depends_on:
       neo4j:
         condition: service_healthy
-      ray-head:
-        condition: service_started
+    env_file:
+      - .env
     environment:
       - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_USERNAME=${NEO4J_USERNAME}
-      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - RAY_ADDRESS=ray://ray-head:10001
+      - PYTHONPATH=/app/src
     volumes:
       - .:/app
       - ./Logs:/app/Logs

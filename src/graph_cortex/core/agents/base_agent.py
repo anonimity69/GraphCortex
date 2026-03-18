@@ -1,33 +1,28 @@
 """
 Base Agent class for the Multi-Agent swarm.
-Provides shared utilities for querying Neo4j and communicating with the Ray Serve LLM router.
+Provides shared utilities for querying Neo4j and direct LLM interaction.
 """
 
-from ray import serve
-import ray
+import logging
+from graph_cortex.infrastructure.inference.llm_client import LLMClient
 
 class BaseAgent:
     def __init__(self, name: str, system_prompt: str):
         self.name = name
         self.system_prompt = system_prompt
-        # Connect to the local Ray cluster if not already connected
-        if not ray.is_initialized():
-            ray.init(ignore_reinit_error=True)
+        # Initialize direct LLM client
+        self.llm = LLMClient()
             
     async def query_llm(self, user_input: str, context: str = "") -> dict:
         """
-        Sends a request to the deployed LLM Engine via Ray Serve handles.
+        Sends a request to the direct LLM client.
         """
         try:
-            # Get a handle to the deployment using Ray 2.9+ Application Handles
-            handle = serve.get_app_handle("LLMEngineDeployment")
-            
-            # Fire an asynchronous RPC
-            response_ref = await handle.remote({
-                "system_prompt": self.system_prompt,
-                "user_input": user_input,
-                "context": context
-            })
-            return response_ref
+            return await self.llm.query(
+                system_prompt=self.system_prompt,
+                user_input=user_input,
+                context=context
+            )
         except Exception as e:
+            logging.error(f"[{self.name}] LLM Query failed: {e}")
             return {"status": "error", "error": str(e)}
