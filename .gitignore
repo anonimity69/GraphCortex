@@ -218,3 +218,11 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# GraphCortex Specific
+data/
+Logs/
+*.egg-info/
+*.log
+.env
+.venv/

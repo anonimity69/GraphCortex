@@ -77,7 +77,8 @@ async def run_repl():
     console.print(Panel(BANNER, border_style="#1D9E75", padding=(1, 2), expand=False))
     
     with console.status("[bold #1D9E75]Initializing Database Schema and Soft-Deletion Constraints...[/]") as status:
-        load_dotenv(override=True)
+        # Load .env to get local keys, but DO NOT override Docker-provided network variables (like NEO4J_URI)
+        load_dotenv(override=False)
         initialize_schema()
         
         manager = MemoryManager()

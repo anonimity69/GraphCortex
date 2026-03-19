@@ -12,6 +12,16 @@ if ! docker info >/dev/null 2>&1; then
     exit 1
 fi
 
+# 0.1 Check for port conflicts (7475, 7688)
+for port in 7475 7688; do
+    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
+        echo "❌ ERROR: Port $port is already in use."
+        echo "Please stop any other Neo4j instances or services using this port."
+        lsof -i :$port
+        exit 1
+    fi
+done
+
 # 1. Check for .env file
 if [ ! -f .env ]; then
     echo ".env file not found. Creating from .env.example..."
@@ -56,12 +66,14 @@ until [ "$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}
     sleep 2
 done
 
-echo -e "\n\n✅ Swarm is running in the background!"
-echo ""
+echo "✅ Swarm is online!"
 echo "--------------------------------------------------------"
-echo "🖥️  To interact with the CLI Swarm, run:"
-echo "   docker attach graphcortex_swarm"
-echo ""
-echo "🕸️  To explore the Knowledge Graph (Neo4j Browser):"
-echo "   http://localhost:7474 (Username: neo4j, Password: your_password)"
+echo "🕸️  Knowledge Graph (Neo4j Browser): http://localhost:7475"
 echo "--------------------------------------------------------"
+echo ""
+echo "Entering Swarm CLI..."
+echo "(Press Ctrl+C to shutdown the swarm)"
+echo ""
+
+# Auto-attach to the CLI
+docker attach graphcortex_swarm
