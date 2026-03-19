@@ -14,11 +14,16 @@ fi
 
 # 0.1 Check for port conflicts (7475, 7688)
 for port in 7475 7688; do
-    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
-        echo "❌ ERROR: Port $port is already in use."
-        echo "Please stop any other Neo4j instances or services using this port."
-        lsof -i :$port
-        exit 1
+    PID=$(lsof -Pi :$port -sTCP:LISTEN -t 2>/dev/null)
+    if [ ! -z "$PID" ]; then
+        # If the port is in use, check if it's by our own Docker container
+        CONF_OWNER=$(docker ps --filter "name=neo4j_nsdmg" --format "{{.Names}}" 2>/dev/null)
+        if [[ "$CONF_OWNER" != "neo4j_nsdmg" ]]; then
+            echo "❌ ERROR: Port $port is already in use by another process."
+            echo "Please stop any other services using this port."
+            lsof -i :$port
+            exit 1
+        fi
     fi
 done
 
