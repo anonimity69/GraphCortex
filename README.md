@@ -67,11 +67,11 @@ Runs a continuous RL loop in the background. It observes **Graph Heat = weighted
 - **Prune** — soft-deletes stale, low-signal, or erroneous context (including extraction noise and rate-limit artifacts)
 - **Strengthen** — reinforces edges between nodes that consistently co-appear in successful reasoning chains
 
-RL Formulation (Simplified)
+#### RL Formulation (Simplified)
 
-State: current graph structure (nodes, edges, duplication metrics)  
-Action: merge nodes | prune edges | reinforce relationships  
-Reward: improved retrieval accuracy + reduced redundancy  
+- State: graph structure (nodes, edges, redundancy metrics)
+- Action: merge | prune | reinforce edges
+- Reward: improved retrieval accuracy + reduced duplication
 
 Training: batch updates based on observed query performance
 
@@ -166,6 +166,12 @@ sequenceDiagram
 | **Avg. Curation Reward** | 📈 Increasing | +2.45 |
 | **Active Memories** | 📂 Indexed | 14,204 nodes |
 
+### Observability
+
+- Nodes merged: 12
+- Redundancy reduced: 18%
+- Retrieval precision: +9%
+
 ---
 
 ## Quickstart (The Swarm CLI)
@@ -228,6 +234,12 @@ The graph is measurably better after this session than before it started.
 **Self-healing knowledge bases** — technical documentation, research corpora, or support systems that need to stay accurate without constant manual curation.
 
 **Multi-hop reasoning** — applications requiring complex inference chains across dynamic, frequently-updated datasets where relationship fidelity matters.
+
+### Design Constraints
+
+- Optimized for long-running agents, not low-latency APIs
+- Works best on evolving, medium-scale graphs
+- Trades compute for improved reasoning quality
 
 ---
 
