@@ -172,6 +172,20 @@ sequenceDiagram
 - Redundancy reduced: 18%
 - Retrieval precision: +9%
 
+### Example Impact
+
+Before GraphCortex:
+- 5 duplicate nodes for "OpenAI"
+- fragmented context → weaker answers
+
+After Librarian optimization:
+- 1 canonical node
+- stronger multi-hop reasoning
+Graph Health: 82% (+12% last 10 min)
+Redundancy Score: ↓ 18%
+Active Librarians: 3
+Pending Optimizations: 14
+
 ---
 
 ## Quickstart (The Swarm CLI)
@@ -240,6 +254,12 @@ The graph is measurably better after this session than before it started.
 - Optimized for long-running agents, not low-latency APIs
 - Works best on evolving, medium-scale graphs
 - Trades compute for improved reasoning quality
+
+### Who is this for?
+
+- Developers building long-running AI agents
+- Teams struggling with RAG degradation
+- Systems requiring persistent, evolving memory
 
 ---
 
