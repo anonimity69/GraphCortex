@@ -1,0 +1,19 @@
+[project]
+name = "graph_cortex"
+version = "0.1.0"
+description = "Distributed Neuro-Symbolic Memory Grid (NS-DMG)"
+authors = [
+    {name = "GraphCortex Team", email = "team@graphcortex.example.com"},
+]
+dependencies = [
+    "neo4j>=5.0.0",
+    "python-dotenv>=1.0.0",
+]
+requires-python = ">=3.9"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+graphcortex-cli = "graph_cortex.interfaces.cli.main:main"
