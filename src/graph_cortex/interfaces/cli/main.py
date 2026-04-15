@@ -38,9 +38,9 @@ def main():
     print("[Retrieval Engine] Testing Spreading Activation...")
     retriever = RetrievalEngine(cutoff_threshold=0.2, max_depth=3)
     
-    # Search for an anchor we just inserted
-    query = ["Clean Architecture"]
-    print(f"Triggering Lexical Search for Core Terms: {query}")
+    # Search for an anchor using a synonymous term to inherently force Semantic Vector Fallback
+    query = ["System Design"]
+    print(f"Triggering Search for Concept: {query}")
     
     results = retriever.retrieve(query)
     
@@ -53,7 +53,7 @@ def main():
     else:
         print("\n[MISS] No relevant anchors found.")
         
-    print("\nPhase 2 Retrieval Verification Complete!")
+    print("\nPhase 3 Vector Semantic Verification Complete! Check /Logs for tracking.")
 
 if __name__ == "__main__":
     sys.exit(main())
