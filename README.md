@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./Assets/banner.svg" width="100%" alt="GraphCortex logo" />
+  <img src="./assets/banner.svg" width="100%" alt="GraphCortex logo" />
 </p>
 
 <p align="center">
@@ -37,7 +37,7 @@ It automatically extracts structural facts (entities and concepts), tracks stric
 
 All of this is managed inside a highly scalable, strictly decoupled Clean Architecture mapping to Neo4j.
 
-<img alt="GraphCortex Knowledge Graph Visualization" src="./Assets/knowledge_graph.png" />
+<img alt="GraphCortex Knowledge Graph Visualization" src="./assets/knowledge_graph.png" />
 
 ---
 
