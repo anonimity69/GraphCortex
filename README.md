@@ -1,21 +1,36 @@
 <p align="center">
-  <h1>GraphCortex</h1>
+  <svg width="32" height="32" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="14" cy="14" r="4" fill="#1D9E75"/>
+    <circle cx="4"  cy="8"  r="2.5" fill="#7F77DD"/>
+    <circle cx="24" cy="8"  r="2.5" fill="#7F77DD"/>
+    <circle cx="4"  cy="20" r="2.5" fill="#7F77DD"/>
+    <circle cx="24" cy="20" r="2.5" fill="#7F77DD"/>
+    <line x1="10.2" y1="11.8" x2="6"  y2="9.2"  stroke="#1D9E75" stroke-width="1.2"/>
+    <line x1="17.8" y1="11.8" x2="22" y2="9.2"  stroke="#1D9E75" stroke-width="1.2"/>
+    <line x1="10.2" y1="16.2" x2="6"  y2="18.8" stroke="#1D9E75" stroke-width="1.2"/>
+    <line x1="17.8" y1="16.2" x2="22" y2="18.8" stroke="#1D9E75" stroke-width="1.2"/>
+    <line x1="4" y1="10.5" x2="4" y2="17.5" stroke="#534AB7" stroke-width="0.8" stroke-dasharray="2,2"/>
+    <line x1="24" y1="10.5" x2="24" y2="17.5" stroke="#534AB7" stroke-width="0.8" stroke-dasharray="2,2"/>
+  </svg>
+</p>
+
+<h1 align="center">GraphCortex</h1>
+
+<p align="center">
+  Distributed neuro-symbolic graph memory for AI agents
 </p>
 
 <p align="center">
-  <strong>State-of-the-art distributed neuro-symbolic graph memory system for AI agents.</strong>
-</p>
-
-<p align="center">
-  <a href="./docs/implementation_plan_phase2.md">Implimentation Plan</a> ·
-  <a href="./DECISIONS.md">Architectural Decisions</a> ·
+  <a href="./docs/implementation_plan_phase2.md">Implementation Plan</a> &nbsp;·&nbsp;
+  <a href="./DECISIONS.md">Architecture Decisions</a> &nbsp;·&nbsp;
   <a href="./src/graph_cortex/interfaces/cli/main.py">Quickstart</a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/architecture-clean-blue?style=flat-square" alt="clean-architecture" />
-  <img src="https://img.shields.io/badge/database-neo4j-green?style=flat-square" alt="neo4j" />
-  <img src="https://img.shields.io/badge/memory-neuro--symbolic-purple?style=flat-square" alt="neuro-symbolic" />
+  <img src="https://img.shields.io/badge/arch-clean%20architecture-1D9E75?style=flat-square&labelColor=085041" />
+  <img src="https://img.shields.io/badge/db-neo4j-7F77DD?style=flat-square&labelColor=3C3489" />
+  <img src="https://img.shields.io/badge/memory-neuro--symbolic-1D9E75?style=flat-square&labelColor=085041" />
+  <img src="https://img.shields.io/badge/agents-multi--agent-7F77DD?style=flat-square&labelColor=3C3489" />
 </p>
 
 ---
