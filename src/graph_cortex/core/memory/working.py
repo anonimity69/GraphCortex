@@ -41,14 +41,11 @@ class WorkingMemory:
         
         CREATE (i)-[:CONTAINS]->(m)
         
+        // Link to the previous message if it exists (native Cypher conditional)
         WITH last, m
-        // Link to the previous message if it exists
-        CALL apoc.do.when(
-            last IS NOT NULL,
-            'CREATE (last)-[:NEXT]->(m) RETURN m',
-            'RETURN m',
-            {last: last, m: m}
-        ) YIELD value
+        FOREACH (_ IN CASE WHEN last IS NOT NULL THEN [1] ELSE [] END |
+            CREATE (last)-[:NEXT]->(m)
+        )
         
         RETURN m.message_id AS id
         """

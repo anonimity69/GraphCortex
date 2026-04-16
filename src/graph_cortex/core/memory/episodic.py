@@ -30,13 +30,11 @@ class EpisodicMemory:
         })
         CREATE (e)-[:SUMMARIZES]->(i)
         
+        // Chronologically chain to previous event (native Cypher conditional)
         WITH latest, e
-        CALL apoc.do.when(
-            latest IS NOT NULL,
-            'CREATE (latest)-[:FOLLOWS]->(e) RETURN e',
-            'RETURN e',
-            {latest: latest, e: e}
-        ) YIELD value
+        FOREACH (_ IN CASE WHEN latest IS NOT NULL THEN [1] ELSE [] END |
+            CREATE (latest)-[:FOLLOWS]->(e)
+        )
         
         RETURN e.event_id AS id
         """
