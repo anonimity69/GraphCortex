@@ -10,10 +10,10 @@ class SemanticMemory:
         self.semantic_model = None
 
     def _get_embedding(self, text: str) -> List[float]:
-        """Lazy loads SentenceTransformer and returns a 384-dimensional vector."""
+        """Lazy loads SentenceTransformer using Apple Silicon MPS and returns a 768-dimensional vector."""
         if not self.semantic_model:
             from sentence_transformers import SentenceTransformer
-            self.semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
+            self.semantic_model = SentenceTransformer('BAAI/bge-base-en-v1.5', device='mps')
         return self.semantic_model.encode(text).tolist()
 
     def add_entity(self, name: str, node_type: str = "Entity", attributes: Dict = None):
