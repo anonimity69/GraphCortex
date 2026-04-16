@@ -1,4 +1,6 @@
-def get_anchor_nodes_by_name(session, entity_names, limit=5):
+from graph_cortex.config.retrieval import SEMANTIC_SIMILARITY_THRESHOLD, LEXICAL_ANCHOR_LIMIT, SEMANTIC_ANCHOR_LIMIT
+
+def get_anchor_nodes_by_name(session, entity_names, limit=LEXICAL_ANCHOR_LIMIT):
     """
     Finds anchor nodes (Entities or Concepts) matching specific string names.
     This acts as the Lexical (BM25-style) trigger in the Dual-Trigger initialization.
@@ -37,7 +39,7 @@ def execute_spreading_activation_hop(session, target_node_id, hop_depth):
     result = session.run(query, node_id=target_node_id)
     return [record.data() for record in result]
 
-def get_anchors_by_vector_similarity(session, vector, limit=2):
+def get_anchors_by_vector_similarity(session, vector, limit=SEMANTIC_ANCHOR_LIMIT):
     """
     Finds anchor nodes based on semantic vector similarity (Cosine).
     Queries the 'entity_vector_index' initialized in schema_migrations.
@@ -45,9 +47,9 @@ def get_anchors_by_vector_similarity(session, vector, limit=2):
     query = """
     CALL db.index.vector.queryNodes('entity_vector_index', $limit, $vector)
     YIELD node, score
-    WHERE score > 0.65  // Minimum similarity threshold to prevent hallucinated anchors
+    WHERE score > $threshold
     RETURN elementId(node) AS node_id, node.name AS name, labels(node)[0] AS type, score
     ORDER BY score DESC
     """
-    result = session.run(query, limit=limit, vector=vector)
+    result = session.run(query, limit=limit, vector=vector, threshold=SEMANTIC_SIMILARITY_THRESHOLD)
     return [record.data() for record in result]

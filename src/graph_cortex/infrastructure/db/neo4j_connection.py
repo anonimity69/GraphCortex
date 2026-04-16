@@ -10,14 +10,21 @@ class Neo4jConnection:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(Neo4jConnection, cls).__new__(cls)
-            uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-            username = os.getenv("NEO4J_USERNAME", "neo4j")
-            password = os.getenv("NEO4J_PASSWORD", "changeme123")
+            uri = os.getenv("NEO4J_URI")
+            username = os.getenv("NEO4J_USERNAME")
+            password = os.getenv("NEO4J_PASSWORD")
             
+            # Enforce configuration — no hardcoded fallbacks for security
+            if not all([uri, username, password]):
+                error_msg = "[ERROR] Missing Neo4j Configuration. Please set NEO4J_URI, NEO4J_USERNAME, and NEO4J_PASSWORD in your .env file."
+                print(error_msg)
+                cls._instance.driver = None
+                return cls._instance
+
             try:
                 cls._instance.driver = GraphDatabase.driver(uri, auth=(username, password))
             except Exception as e:
-                print(f"Failed to connect to Neo4j: {e}")
+                print(f"[ERROR] Failed to connect to Neo4j: {e}")
                 cls._instance.driver = None
         return cls._instance
 

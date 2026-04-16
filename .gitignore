@@ -1,11 +1,10 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[codz]
-*$py.class
-# C extensions
-*.so
-*.pdf
-studymaterial/
+# OS specific files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Documentation - Un-ignored to track the project study guide
+# studymaterial/ removed from ignore list
 # Distribution / packaging
 .Python
 build/
@@ -25,6 +24,17 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+*$py.class
+# C extensions
+*.so
+
+# Selective PDF ignoring - allow core whitepaper but ignore heavy logs/outputs
+# *.pdf removed from global ignore to allow project whitepaper tracking
+Logs/*.pdf
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -143,6 +153,9 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Local Logs - Never track unique run output
+Logs/
 
 # Spyder project settings
 .spyderproject
