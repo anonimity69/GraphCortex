@@ -51,13 +51,13 @@ class LLMEngineDeployment:
                 )
             )
             
-            # Bound the request to 12 seconds so that tenancity retry loops on 429 errors 
-            # don't lock the UI forever.
-            response = await asyncio.wait_for(coro, timeout=12.0)
+            # Bound the request to 90 seconds. Open models (like Gemma 31B) can take
+            # significantly longer to generate tokens than standard Gemini Flash models.
+            response = await asyncio.wait_for(coro, timeout=90.0)
             return {"status": "success", "response": response.text}
             
         except asyncio.TimeoutError:
-            error_msg = "API Timeout: Rate limits or quotas exceeded. Please check your model provider limits."
+            error_msg = "API Timeout: The model took too long to generate a response (90s limit). This can happen with large models under heavy network load."
             logging.error(f"[LLM Router Error] {error_msg}")
             return {"status": "error", "error": error_msg}
         except Exception as e:

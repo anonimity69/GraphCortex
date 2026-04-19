@@ -15,6 +15,7 @@ Neo4j vector index dimension always matches the model output.
 
 import os
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
 
@@ -35,9 +36,9 @@ def get_model():
     global _model_instance
     if _model_instance is None:
         from sentence_transformers import SentenceTransformer
-        print(f"[INFO] Loading embedding model: {EMBEDDING_MODEL} (device: {EMBEDDING_DEVICE})")
+        logging.info(f"Loading embedding model: {EMBEDDING_MODEL} (device: {EMBEDDING_DEVICE})")
         _model_instance = SentenceTransformer(EMBEDDING_MODEL, device=EMBEDDING_DEVICE)
-        print(f"[INFO] Model loaded. Vector dimensions: {get_vector_dimension()}")
+        logging.info(f"Model loaded. Vector dimensions: {get_vector_dimension()}")
     return _model_instance
 
 

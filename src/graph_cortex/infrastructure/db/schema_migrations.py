@@ -1,5 +1,6 @@
 from graph_cortex.infrastructure.db.neo4j_connection import get_session
 from graph_cortex.config.embedding import get_vector_dimension
+import logging
 
 def initialize_schema():
     """
@@ -37,20 +38,20 @@ def initialize_schema():
             # 1. Base Constraints
             for query in base_queries:
                 session.run(query)
-            print("[INFO] Core Database Schema initialized successfully.")
+            logging.info("Core Database Schema initialized successfully.")
             
             # 2. Vector Diagnostic Check
             try:
                 for v_query in vector_queries:
                     session.run(v_query)
-                print(f"[INFO] Vector Indexes ({dim}-Dimensions) initialized successfully.")
+                logging.info(f"Vector Indexes ({dim}-Dimensions) initialized successfully.")
             except Exception as v_err:
-                print(f"\n[WARNING] Neo4j Vector Initialization Failed.")
-                print(f"[DIAGNOSTIC] Your current Neo4j Container version may be outdated and does not support Vector indexing.")
-                print(f"[DIAGNOSTIC] Inner Error: {v_err}\n")
+                logging.warning("Neo4j Vector Initialization Failed.")
+                logging.warning("Your current Neo4j Container version may be outdated and does not support Vector indexing.")
+                logging.warning(f"Inner Error: {v_err}")
                 
     except Exception as e:
-        print(f"[ERROR] Failed to initialize core schema: {e}")
+        logging.error(f"Failed to initialize core schema: {e}")
 
 if __name__ == "__main__":
     initialize_schema()
