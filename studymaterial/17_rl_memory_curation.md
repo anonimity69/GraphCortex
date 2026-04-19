@@ -1,90 +1,71 @@
-# Module 17: RL Memory Curation
+# Module 17: RL Memory Curation (The Intelligence Layer)
 
 ## Files Covered
 - `src/graph_cortex/core/rl/action_env.py`
 - `src/graph_cortex/core/rl/reward_judge.py`
-- `src/graph_cortex/core/rl/trainer.py`
 
 ---
 
-## What These Files Do
+## What This Layer Does
 
-These files form the **Intelligence Layer** (Phase 4). They map the domain of Graph Database maintenance into the mathematical domain of deeply recursive Reinforcement Learning.
+The **Intelligence Layer** (Phase 4) is where GraphCortex transitions from a passive database to an active, self-optimizing "brain." 
 
-Instead of writing static Python rules like `If a node hasn't been used in 5 days, delete it`, we use AI. We treat the Graph Database as a "Board Game". We deploy a **Librarian Agent** to play the game by mutating connections. If the Librarian makes the graph better (proven by the Research Agent successfully answering questions faster and more accurately), it gets a High Score (`Reward = +1`). 
+Instead of manual rule-coding (e.g., "delete nodes older than 30 days"), we use **Reinforcement Learning** to discover the most efficient graph topologies. We deploy a **Librarian Agent** that is rewarded for mutating the graph in ways that improve the **Research Agent's** accuracy on real-world reasoning benchmarks.
 
-We train this via **Group Relative Policy Optimization (GRPO)** using Volcano Engine RL (`VeRL`).
+### The "Forward-Pass Simulator"
+To avoid the massive compute requirements of local backward-pass training, Phase 4 is implemented as a **Highly Advanced Forward-Pass Simulator**. This allows us to:
+1.  Verify the bridge between LLM actions and Neo4j transactions.
+2.  Test the LLM-as-a-Judge reward pipeline.
+3.  Simulate rollout loops locally before porting to a cloud GPU for official training.
 
 ---
 
-## Full Code with Line-by-Line Explanation
+## The RL Environment (`action_env.py`)
 
-### 1. The RL Environment (`action_env.py`)
+The `GraphMemoryEnv` translates discrete tokens from an LLM policy into physical state changes in Neo4j.
 
 ```python
-import gymnasium as gym
-from gymnasium import spaces
-from graph_cortex.core.memory.curation import MemoryCuration
-
 class GraphMemoryEnv(gym.Env):
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self):
         super(GraphMemoryEnv, self).__init__()
         self.curation = MemoryCuration()
+        
+        # 0: NOOP, 1: ADD, 2: UPDATE, 3: SOFT-DELETE
         self.action_space = spaces.Discrete(4)
 ```
-We subclass `gym.Env`, standardizing the interface so mathematical tooling (like PyTorch / VeRL frameworks) can natively interact with it.
-The Librarian can output four discrete actions mathematically bound to `0, 1, 2, 3`.
 
-```python
-    def step(self, action: int, action_kwargs: dict):
-        if action == 3:  # SOFT-DELETE
-            node_id = action_kwargs.get("node_id")
-            self.curation.set_node_active_status(node_id=node_id, status=False)
-```
-When `step` is called by the RL Rollout phase, we execute deterministic Graph manipulations. Here we use the `SOFT-DELETE` mechanism established in Phase 3. 
+### The Step Function
+The `step()` function is the heart of the environment. It receives an action and its parameters (kwargs) and executes it via the `MemoryCuration` service.
 
-### 2. The Objective Reward Judge (`reward_judge.py`)
-
-A massive pitfall in RL is "Reward Hacking" — if we reward the Librarian simply for deleting things, it will delete the entire graph to maximize scores. We must reward the *Outcome*.
-
-```python
-class LLMRewardJudge:
-    def evaluate_answer(self, question: str, ground_truth: str, agent_answer: str) -> float:
-        # Prompt: Score the Agent Answer against the Ground Truth from 0.0 to 1.0.
-        ...
-        match = re.search(r'\[([0-9]*\.?[0-9]+)\]', response.text)
-        score = float(match.group(1))
-        return max(0.0, min(1.0, score))
-```
-This is an **LLM-as-a-Judge** pipeline.
-Once the Librarian mutates the Graph, we ask the *ResearchAgent* a question. The Researcher retrieves context from the mutated Graph and gives an answer.
-The Gemini API acts as a cold, calculating referee, scoring the answer. This is our `Reward`.
-
-### 3. The Skeleton Trainer (`trainer.py`)
-
-```python
-class RLSkeletonTrainer:
-    def run_local_simulation_loop(self):
-        for ep in range(self.episodes):
-            
-            # 1. Rollout Phase
-            state, _ = self.env.reset(...)
-            simulated_action = 3 # Librarian decides to flag a node as noisy
-            
-            # 2. Environment Transition
-            next_state, base_reward, done, _, info = self.env.step(...)
-            
-            # 3. Reward Phase
-            score = self.judge.evaluate_answer(...)
-            
-            # 4. Advantage / Gradient Update
-            # weights updated locally.
-```
-This file is a structural blueprint of a GRPO Rollout. If you ran a real `VeRL` command locally on an Apple Silicon M-Series chip against 8 Billion parameter models, Unified Memory would quickly crash during Backpropagation. 
-
-Therefore, this file is a decoupled simulator representing exactly where the logic binds. To run RL properly, you move this loop to an NVIDIA RunPod instance, pip install VeRL and Ray, and the loop distributes the Forward and Backward passes across multiple compute cards using PyTorch natively.
+| Action | Mapping | Description |
+| :--- | :--- | :--- |
+| **0 (NOOP)** | No Action | The Librarian decides the current graph context is already optimal. |
+| **1 (ADD)** | `merge_node` | Injects a new entity or concept into the graph to bridge a reasoning gap. |
+| **2 (UPDATE)** | `update_node` | Modifies relationship weights or metadata on existing nodes. |
+| **3 (DELETE)** | `set_node_active_status` | Flags a node as `is_active=False` (Soft-Delete) to prune noise. |
 
 ---
 
-## Conclusion
-The GraphCortex ecosystem brings together pure mathematical lateral inhibition, distributed API load balancers, memory sharding techniques, and deep Reinforcement Learning concepts into a single seamless pedagogical pipeline.
+## The Reward Loop: LLM-as-a-Judge (`reward_judge.py`)
+
+Deep Reinforcement Learning requires a high-fidelity reward signal. We use **Gemini 2.0 Flash** as an impartial referee to grade the performance of the system *after* the Librarian has modified the graph.
+
+### The Evaluation Flow
+1.  **Observation**: The environment presents a question and the current graph neighborhood.
+2.  **Action**: The Librarian makes a mutation (e.g., soft-deleting a noisy "hub" node).
+3.  **Inference**: The Research Agent attempts to answer the question using the *new* graph topology.
+4.  **Judging**: The `LLMRewardJudge` compares the Agent's answer against the **Ground Truth** from the HotpotQA dataset.
+5.  **Scoring**: Gemini returns a score from `0.0` (failure) to `1.0` (perfect), which is fed back into the RL policy as a reward.
+
+```python
+def evaluate_answer(self, question, ground_truth, agent_answer):
+    # Prompting Gemini to assign a score inside brackets [0.95]
+    ...
+    match = re.search(r'\[([0-9]*\.?[0-9]+)\]', response.text)
+    return float(match.group(1))
+```
+
+---
+
+## Why This Matters
+By building this "Gymnasium" bridge first, we ensure that when we eventually port to a multi-GPU cluster (using **VeRL** and **GRPO**), the "muscles" (Neo4j curation) and "logic" (prompting/scoring) are already hardened and verified.
