@@ -3,6 +3,7 @@ import asyncio
 import uuid
 import ray
 from ray import serve
+from dotenv import load_dotenv
 import logging
 import os
 
@@ -33,6 +34,11 @@ async def run_repl():
     console.print(Panel(BANNER, border_style="#1D9E75", padding=(1, 2), expand=False))
     
     with console.status("[bold #1D9E75]Initializing Database Schema and Soft-Deletion Constraints...[/]") as status:
+        # Explicitly reload .env to ensure the latest API keys are loaded into the current process
+        load_dotenv(override=True)
+        api_key = os.getenv("GEMINI_API_KEY")
+        model_name = os.getenv("LLM_MODEL", "gemini-2.0-flash")
+
         initialize_schema()
         
         status.update("[bold #7F77DD]Connecting to local Ray cluster...[/]")
@@ -46,7 +52,8 @@ async def run_repl():
             
         status.update("[bold #1D9E75]Deploying Gemini LLM Router via Ray Serve...[/]")
         serve.start(detached=True)
-        serve.run(LLMEngineDeployment.bind(), name="LLMEngineDeployment", route_prefix="/llm")
+        # Use bind() parameters to force-feed the fresh API key into the Ray workers
+        serve.run(LLMEngineDeployment.bind(api_key=api_key, model=model_name), name="LLMEngineDeployment", route_prefix="/llm")
         
         manager = MemoryManager()
         researcher = ResearchAgent()
