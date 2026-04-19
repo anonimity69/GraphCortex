@@ -3,105 +3,83 @@
 </p>
 
 <p align="center">
-  Distributed neuro-symbolic graph memory for AI agents
+  <strong>Distributed neuro-symbolic graph memory for AI agents</strong>
 </p>
 
 <p align="center">
-  <a href="./docs/implementation_plan_phase2.md">Implementation Plan</a> &nbsp;·&nbsp;
+  <a href="./docs/implementation_plan_rl_training.md">RL Training Plan</a> &nbsp;·&nbsp;
   <a href="./DECISIONS.md">Architecture Decisions</a> &nbsp;·&nbsp;
-  <a href="./src/graph_cortex/interfaces/cli/main.py">Quickstart</a>
+  <a href="./src/graph_cortex/interfaces/cli/main.py">Interactive CLI</a>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/arch-clean%20architecture-1D9E75?style=flat-square&labelColor=085041" />
   <img src="https://img.shields.io/badge/db-neo4j-7F77DD?style=flat-square&labelColor=3C3489" />
-  <img src="https://img.shields.io/badge/memory-neuro--symbolic-1D9E75?style=flat-square&labelColor=085041" />
-  <img src="https://img.shields.io/badge/agents-multi--agent-7F77DD?style=flat-square&labelColor=3C3489" />
+  <img src="https://img.shields.io/badge/compute-ray%20serve-1D9E75?style=flat-square&labelColor=085041" />
+  <img src="https://img.shields.io/badge/rl-grpo%20fine--tuning-7F77DD?style=flat-square&labelColor=3C3489" />
 </p>
 
 ---
 
-GraphCortex is the neuro-symbolic memory and context layer for advanced AI agents, built specifically to solve the limitations of flat vector databases and generic RAG pipelines. 
+GraphCortex is a neuro-symbolic memory and context layer for advanced AI agents. It solves the limitations of flat vector databases by combining a **Multi-Agent Swarm** with a **Neo4j Knowledge Graph** and **Reinforcement Learning (RL)** optimization.
 
-Your AI forgets chronological context and topological relationships between concepts. GraphCortex fixes that.
-
-It automatically extracts structural facts (entities and concepts), tracks strict chronological interaction histories, mathematically prevents hub-explosions during retrieval, and dynamically returns completely connected associative sub-graphs. 
+It automatically extracts structural facts, tracks chronological interaction histories, and uses **Spreading Activation** to retrieve deeply connected sub-graphs—now optimized by an RL-driven "Librarian" that curates the graph for maximum logic density.
 
 | | |
 |---|---|
-| 🧠 **Working Memory** | Real-time bounded interactions. Acts as a strict short-term buffer before nodes are structurally summarized. |
-| 📅 **Episodic Memory** | Chronological event summaries. Compresses interactions into searchable, sequential "events". |
-| 🕸️ **Semantic Memory** | Entity-level abstractions. Maps global logic, extracting factual connections and recording exactly which interactions originated them. |
-| 🔍 **Dual-Trigger Retrieval** | Hybrid lexical + semantic (vector) triggers. Finds exact concepts or soft semantic matches as search anchors. |
-| ⚡ **Spreading Activation** | AI recalls memory exactly like the human brain—fanning out energy from an anchor node, bounded mathematically by Lateral Inhibition (The Fan Effect) to prevent context flooding. |
-
-All of this is managed inside a highly scalable, strictly decoupled Clean Architecture mapping to Neo4j.
-
-<img alt="GraphCortex Knowledge Graph Visualization" src="./assets/knowledge_graph.png" />
+| 🧠 **Working Memory** | Real-time short-term buffer for active interactions. |
+| 📅 **Episodic Memory** | Sequential event summaries compressed for long-term recall. |
+| 🕸️ **Semantic Memory** | Global entity-level abstractions and factual relationships. |
+| 🔍 **Dual-Trigger Retrieval** | Hybrid Lexical + Semantic (Vector) triggers for robust context anchors. |
+| ⚡ **Spreading Activation** | Neighbors-of-neighbors retrieval bounded by mathematical Lateral Inhibition. |
+| ⚖️ **RL Librarian** | Phase 4 Fine-Tuning loop that rewards the agent for higher reasoning accuracy. |
 
 ---
 
-## Architecture Overview
+## 🏛️ Architecture: Distributed Swarm
 
-<table>
-<tr>
-<td width="33%" valign="top">
+GraphCortex runs on a strictly decoupled, multi-agent architecture powered by **Ray Serve**:
 
-<h3>🧠 Core</h3>
-
-The pure mathematical theory of memory. Contains Working Memory logic, Lateral Inhibition math, and Energy Decay equations. Absolutely zero dependencies on Neo4j or external APIs.
-
-</td>
-<td width="33%" valign="top">
-
-<h3>🔧 Infrastructure</h3>
-
-The physical tooling. Contains isolated Cypher queries and the Neo4j Python Driver implementation. To migrate to an enterprise DB like AWS Neptune, simply swap this folder.
-
-</td>
-<td width="33%" valign="top">
-
-<h3>🔌 Interfaces</h3>
-
-The operational tier. How the system talks to the outside world, including CLI commands and test modules.
-
-</td>
-</tr>
-</table>
+*   **Researcher Agent**: Navigates graph topology and executes hybrid retrieval.
+*   **Summarizer Agent**: Background actor that extracts knowledge without blocking the user.
+*   **Librarian Agent (RL)**: Self-optimizing curation policy that prunes redundant nodes.
+*   **Reward Judge**: LLM-as-a-Judge pipeline that grades agent answers against ground truth.
 
 ---
 
-## Give your AI memory (Quickstart)
+## 🚀 Getting Started
 
-GraphCortex provides an end-to-end executable backend pipeline. 
+GraphCortex is fully executable locally on Mac/Linux with Neo4j.
 
-### Local Execution
-1. Install requirements (`neo4j`, `python-dotenv`, `sentence-transformers`).
-2. Run Neo4j locally via Docker using `docker-compose.yml`.
-3. Secure your `.env` variables (`NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`).
+### Installation
+1.  **Clone & Environment**:
+    ```bash
+    pip install -r requirements.txt
+    cp .env.example .env # Add your GEMINI_API_KEY and NEO4J credentials
+    ```
+2.  **Dataset Prep** (For Phase 4 Training):
+    ```bash
+    python scripts/prepare_rl_dataset.py # Downloads 100 HotpotQA samples
+    ```
+3.  **Start the Swarm**:
+    ```bash
+    python src/graph_cortex/interfaces/cli/main.py
+    ```
 
-Run the built-in Native CLI to verify the ingestion and Spreading Activation pipelines:
-```bash
-python src/graph_cortex/interfaces/cli/main.py
-```
-
-### What your AI gets
-
-| Layer | What it does |
-|---|---|
-| `MemoryManager` | The traffic-cop orchestrator. Exposes `process_turn()` for raw chat ingestion and `consolidate_episode()` for LLM-fact extraction tracking. |
-| `RetrievalEngine` | The core query engine. Executes math-backed Spreading Activation starting from semantic vectors or keywords, finding neighbors up to $N$ hops away. |
-| `Inhibition` | Energy decay math (`AE = initial_energy / (((distance * const) + 1) * ((degree * const) + 1))`). Drops massive generic hubs before they ruin the LLM's context window. |
+### Interactive CLI Commands
+*   `/help` - Show all available commands.
+*   `/data` - Live dashboard of Neo4j node counts and RL dataset status.
+*   `/train` - **Live RL Session**. Fine-tunes the Librarian policy using local data.
+*   `/clear` - Flush working memory.
+*   `/exit` - Graceful shutdown with background task synchronization.
 
 ---
 
-## Why GraphCortex instead of Pinecone/RAG?
+## 🎯 Why GraphCortex?
 
-**Memory is not standard RAG.** RAG retrieves isolated document chunks. Vector databases are fundamentally flat and cannot natively construct multi-hop associative networks.
+**Standard RAG is flat.** Vector databases retrieve isolated chunks but lose the "topology" of your problem. GraphCortex uses **Persistent Neo4j Topology** and **Active Learning** to ensure your AI understands that "User A belongs_to StartUp Y", and can deduce multi-hop structural logic without hallucinations.
 
-GraphCortex uses persistent Neo4j topology. It natively understands that "User A belongs_to StartUp Y", and "StartUp Y uses Pinecone". It explicitly tracks *facts over time* chronologically, allowing your agent to deduce deep, structural logic without guessing.
-
-Read our full technical breakdown: **[DECISIONS.md](./DECISIONS.md)**
+Read the full technical breakdown: **[DECISIONS.md](./DECISIONS.md)**
 
 ---
 

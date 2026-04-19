@@ -1,4 +1,5 @@
 from graph_cortex.infrastructure.db.neo4j_connection import get_session
+import json
 
 class MemoryCuration:
     """
@@ -7,6 +8,30 @@ class MemoryCuration:
     """
     def __init__(self):
         pass
+
+    def merge_node(self, label: str, name: str, properties: dict = None):
+        """
+        Idempotently creates or updates a node during RL training.
+        """
+        if properties is None:
+            properties = {}
+        
+        # Ensure we track that this was an RL-optimized node
+        properties['curated_by'] = 'RL_Librarian'
+        
+        query = f"MERGE (n:{label} {{name: $name}}) SET n += $props RETURN n"
+        with get_session() as session:
+            result = session.run(query, name=name, props=properties)
+            return result.single() is not None
+
+    def update_node(self, node_id: str, properties: dict):
+        """
+        Updates properties of an existing node by its internal ID.
+        """
+        query = "MATCH (n) WHERE elementId(n) = $node_id SET n += $props RETURN n"
+        with get_session() as session:
+            result = session.run(query, node_id=node_id, props=properties)
+            return result.single() is not None
 
     def set_node_active_status(self, node_id: str, status: bool = False):
         """
