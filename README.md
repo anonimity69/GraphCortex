@@ -24,6 +24,10 @@
   <img src="https://img.shields.io/badge/rl-grpo%20fine--tuning-1D9E75?style=flat-square&labelColor=085041" />
 </p>
 
+<p align="center">
+  <img src="./assets/demo.gif" width="100%" alt="GraphCortex Demo" />
+</p>
+
 ---
 
 ## The problem with AI agent memory
