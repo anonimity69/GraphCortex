@@ -33,7 +33,6 @@ class RetrievalEngine:
             # Step 1B: Semantic Vector Fallback
             if not anchors:
                 self.logger.info(f"Lexical Miss for '{query_terms}'. Initiating Semantic Vector Fallback.")
-                print(f"\n[!] Lexical miss for '{query_terms}'. Activating Semantic Vector Fallback...")
                 
                 vector = encode_embedding(query_terms[0])
                 anchors = get_anchors_by_vector_similarity(session, vector, limit=SEMANTIC_ANCHOR_LIMIT)

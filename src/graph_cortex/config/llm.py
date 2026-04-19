@@ -7,7 +7,7 @@ ensuring zero hardcoding of sensitive or tunable parameters.
 
 To change the configuration, update your .env file:
     GEMINI_API_KEY=your_key_here
-    LLM_MODEL=gemini-2.0-flash
+    LLM_MODEL=your_model_path
     RAY_ADDRESS=auto
 """
 
@@ -20,7 +20,7 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # ─── LLM Tunables ───────────────────────────────────────────────────────────
-LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.0-flash")
+LLM_MODEL = os.getenv("LLM_MODEL")  # No default, forcing env configuration
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.7"))
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "1024"))
 

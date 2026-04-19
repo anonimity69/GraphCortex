@@ -1,4 +1,5 @@
 from graph_cortex.core.agents.base_agent import BaseAgent
+import logging
 from graph_cortex.core.retrieval.engine import RetrievalEngine
 from graph_cortex.config.llm import DEFAULT_RESEARCHER_PROMPT
 
@@ -17,7 +18,7 @@ class ResearchAgent(BaseAgent):
         2. Format Context
         3. Query LLM to formulate an answer
         """
-        print(f"[{self.name}] Retrieving context for query: '{user_query}'")
+        logging.info(f"[{self.name}] Retrieving context for query: '{user_query}'")
         
         # We pass the full query string as a single-element list to the engine
         retrieval_results = self.retrieval_engine.retrieve([user_query])
@@ -30,12 +31,12 @@ class ResearchAgent(BaseAgent):
                 # distance, type, name
                 context_string += f"- ({node['type']}) {node['name']} [Distance: {node['distance']}]\n"
                 
-            print(f"[{self.name}] Found {len(nodes)} connected context nodes.")
+            logging.info(f"[{self.name}] Found {len(nodes)} connected context nodes.")
         else:
-            print(f"[{self.name}] No relevant context found. Proceeding with zero-shot.")
+            logging.info(f"[{self.name}] No relevant context found. Proceeding with zero-shot.")
             
         # Send to deployed LLM Engine
-        print(f"[{self.name}] Awaiting LLM response...")
+        logging.info(f"[{self.name}] Awaiting LLM response...")
         llm_response = await self.query_llm(user_input=user_query, context=context_string)
         
         if llm_response.get("status") == "error":
