@@ -1,18 +1,19 @@
 from graph_cortex.config.retrieval import SEMANTIC_SIMILARITY_THRESHOLD, LEXICAL_ANCHOR_LIMIT, SEMANTIC_ANCHOR_LIMIT
 
-def get_anchor_nodes_by_name(session, entity_names, limit=LEXICAL_ANCHOR_LIMIT):
+def get_anchors_by_fulltext(session, search_string, limit=LEXICAL_ANCHOR_LIMIT):
     """
-    Finds anchor nodes (Entities or Concepts) matching specific string names.
-    This acts as the Lexical (BM25-style) trigger in the Dual-Trigger initialization.
+    Finds anchor nodes (Entities or Concepts) using a Fulltext BM25 index search.
+    This replaces the exact substring match with probabilistic keyword relevance.
     """
     query = """
-    UNWIND $names AS name
-    MATCH (n) WHERE (n:Entity OR n:Concept) AND toLower(n.name) CONTAINS toLower(name)
-          AND coalesce(n.is_active, true) = true
-    RETURN elementId(n) AS node_id, n.name AS name, labels(n)[0] AS type
+    CALL db.index.fulltext.queryNodes("hybrid_entity_concept", $search_string)
+    YIELD node, score
+    WHERE coalesce(node.is_active, true) = true
+    RETURN elementId(node) AS node_id, node.name AS name, labels(node)[0] AS type, score
+    ORDER BY score DESC
     LIMIT $limit
     """
-    result = session.run(query, names=entity_names, limit=limit)
+    result = session.run(query, search_string=search_string, limit=limit)
     return [record.data() for record in result]
 
 
