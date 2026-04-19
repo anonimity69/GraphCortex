@@ -13,11 +13,11 @@ import os
 
 def prepare_dataset():
     print("[Dataset Prep] Loading HotpotQA from HuggingFace...")
-    # Load the validation split to keep the size small for local testing
-    dataset = load_dataset("hotpot_qa", "distractor", split="validation")
+    # Load the massive training split instead of the validation subset
+    dataset = load_dataset("hotpot_qa", "distractor", split="train")
     
-    # We will sample 100 questions for our local RL Proof-of-Concept
-    subset = dataset.select(range(100))
+    # We remove the local 100-sample limit to train on the entire dataset
+    subset = dataset
     
     output_dir = "data/rl_training"
     os.makedirs(output_dir, exist_ok=True)
