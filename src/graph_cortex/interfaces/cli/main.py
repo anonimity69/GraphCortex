@@ -42,6 +42,7 @@ from graph_cortex.infrastructure.db.schema_migrations import initialize_schema
 from graph_cortex.core.memory.manager import MemoryManager
 from graph_cortex.core.agents.researcher import ResearchAgent
 from graph_cortex.core.agents.summarizer import SummaryAgent
+from graph_cortex.core.agents.librarian import LibrarianAgent
 from graph_cortex.infrastructure.inference.llm_router import LLMEngineDeployment
 from graph_cortex.core.rl.trainer import RLPyTorchTrainer
 from graph_cortex.infrastructure.db.neo4j_connection import get_session
@@ -60,6 +61,28 @@ BANNER = """
 [dim italic #6B7280]          Distributed neuro-symbolic graph memory[/]
 [dim italic #6B7280]                        for AI agents[/]
 """
+
+async def background_librarian_task(librarian_agent: LibrarianAgent):
+    """
+    Periodic background loop that triggers the Librarian to curate the graph.
+    """
+    logging.info("[Background] Librarian automation started.")
+    while True:
+        try:
+            # Wake up every 60 seconds
+            await asyncio.sleep(60)
+            logging.info("[Background] Librarian waking up for periodic curation...")
+            
+            # Use current system heat as 'state' context for the policy
+            context = "Self-maintenance cycle: Periodic graph optimization."
+            librarian_agent.curate(context)
+            
+        except asyncio.CancelledError:
+            logging.info("[Background] Librarian automation stopping...")
+            break
+        except Exception as e:
+            logging.error(f"[Background Error] Librarian automation failed: {e}")
+            await asyncio.sleep(10) # Wait before retry
 
 async def run_repl():
     console.print(Panel(BANNER, border_style="#1D9E75", padding=(1, 2), expand=False))
@@ -101,6 +124,7 @@ async def run_repl():
         manager = MemoryManager()
         researcher = ResearchAgent()
         summarizer = SummaryAgent()
+        librarian = LibrarianAgent()
 
     console.print()
     console.print("[bold green]System Online.[/] Memory Swarm deployed and observing.")
@@ -111,8 +135,12 @@ async def run_repl():
     manager.working.add_interaction(session_id)
     logging.info(f"Initialized new REPL Session: {session_id}")
     
-    # Track background summarization tasks to ensure they finish before CLI exit
+    # Track background summarization and librarian tasks to ensure they finish before CLI exit
     pending_tasks = set()
+    
+    # Start the automated Librarian loop
+    librarian_task = asyncio.create_task(background_librarian_task(librarian))
+    pending_tasks.add(librarian_task)
     
     while True:
         try:
@@ -137,7 +165,13 @@ async def run_repl():
                     console.print(f"[bold cyan]Current Active Session:[/] {session_id}")
                     logging.info("User requested /history.")
                 elif cmd == "/stats":
-                    console.print("[bold cyan]Swarm Stats:[/] Ray Cluster Active. Gemini Router Bound. Researcher/Summarizer Alive.")
+                    console.print("[bold cyan]Swarm Stats:[/] Ray Cluster Active. Gemini Router Bound. Researcher/Summarizer/Librarian Alive.")
+                elif cmd == "/curate":
+                    console.print("[bold yellow]Librarian Agent analyzing Graph topology...[/]")
+                    # Use the last user query or a default as the "state" context
+                    context = f"Session {session_id} active. Continuous reasoning required."
+                    curation_info = librarian.curate(context)
+                    console.print(f"[bold green]Success:[/] Librarian took action: [bold cyan]{curation_info['status']}[/]")
                     logging.info("User requested /stats.")
                 elif cmd == "/data":
                     # DB Dashboard
@@ -169,7 +203,8 @@ async def run_repl():
                         "• [bold cyan]/help[/]    - Show this menu\n"
                         "• [bold cyan]/data[/]    - Display Graph and Training dataset statistics\n"
                         "• [bold cyan]/train[/]   - Run RL fine-tuning trial (Phase 4)\n"
-                        "• [bold cyan]/stats[/]   - Show active agent swarm status\n"
+                        "• [bold cyan]/stats[/]    - Show system operational health\n"
+                        "• [bold cyan]/curate[/]   - Manually trigger the [bold purple]Librarian RL Agent[/] to optimize graph topology\n"
                         "• [bold cyan]/history[/] - Show current session info\n"
                         "• [bold cyan]/clear[/]   - Flush working memory and start new session\n"
                         "• [bold cyan]/exit[/]    - Gracefully shutdown the swarm"
