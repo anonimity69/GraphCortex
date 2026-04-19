@@ -9,8 +9,7 @@ import os
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
-from prompt_toolkit import PromptSession
-from prompt_toolkit.styles import Style
+from rich.markdown import Markdown
 
 from graph_cortex.infrastructure.db.schema_migrations import initialize_schema
 from graph_cortex.core.memory.manager import MemoryManager
@@ -39,7 +38,11 @@ async def run_repl():
         status.update("[bold #7F77DD]Connecting to local Ray cluster...[/]")
         # Suppress massive ray dashboard logs on standard out for clean REPL
         if not ray.is_initialized():
-            ray.init(ignore_reinit_error=True, log_to_driver=False, include_dashboard=False)
+            try:
+                ray.init(ignore_reinit_error=True, log_to_driver=False, include_dashboard=False)
+            except ConnectionError:
+                os.environ.pop("RAY_ADDRESS", None)
+                ray.init(ignore_reinit_error=True, log_to_driver=False, include_dashboard=False)
             
         status.update("[bold #1D9E75]Deploying Gemini LLM Router via Ray Serve...[/]")
         serve.start(detached=True)
@@ -54,16 +57,14 @@ async def run_repl():
     console.print("[dim]Admin Tip: View live architecture operations by running `tail -f Logs/admin_system.log` in another terminal.[/]")
     console.print("Type [bold cyan]/help[/] for commands. Press [bold cyan]Ctrl+C[/] to exit.\n")
     
-    style = Style.from_dict({'prompt': 'ansicyan bold'})
-    session = PromptSession(style=style)
-    
     session_id = f"session_{uuid.uuid4().hex[:8]}"
     manager.working.add_interaction(session_id)
     logging.info(f"Initialized new REPL Session: {session_id}")
     
     while True:
         try:
-            user_input = await session.prompt_async("User > ")
+            # Safely release the asyncio thread to wait for standard input so it doesn't freeze the console spinner!
+            user_input = await asyncio.to_thread(console.input, "\n[bold cyan]User >[/] ")
             user_input = user_input.strip()
             if not user_input:
                 continue

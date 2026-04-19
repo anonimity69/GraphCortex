@@ -34,14 +34,21 @@ class LLMEngineDeployment:
             full_prompt = f"System: {system_prompt}\n\nUser: {user_input}"
             
         try:
-            # Note: For Gemini, we pass the full text block. If using pure structured output,
-            # we would pass schema options here, but we will handle JSON instruction in the prompt.
-            response = self.client.models.generate_content(
+            import asyncio
+            coro = self.client.aio.models.generate_content(
                 model=self.model,
                 contents=full_prompt
             )
+            
+            # Bound the request to 12 seconds so that tenancity retry loops on 429 errors 
+            # don't lock the UI forever.
+            response = await asyncio.wait_for(coro, timeout=12.0)
             return {"status": "success", "response": response.text}
             
+        except asyncio.TimeoutError:
+            error_msg = "API Timeout: Rate limits or quotas exceeded. Please check your Gemini limits."
+            print(f"[LLM Router Error] {error_msg}")
+            return {"status": "error", "error": error_msg}
         except Exception as e:
             print(f"[LLM Router Error] {str(e)}")
             return {"status": "error", "error": str(e)}
