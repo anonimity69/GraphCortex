@@ -68,4 +68,4 @@ def encode(text: str) -> list:
     Returns a plain Python list of floats (compatible with Neo4j storage).
     """
     model = get_model()
-    return model.encode(text).tolist()
+    return model.encode(text, show_progress_bar=False).tolist()
