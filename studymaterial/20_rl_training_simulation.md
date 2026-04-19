@@ -1,65 +1,71 @@
-# Module 20: RL Training Simulation (The Brain)
+# Module 20: Neural Policy Training (The Brain)
 
 ## File Covered
 - `src/graph_cortex/core/rl/trainer.py`
+- `src/graph_cortex/core/rl/policy.py`
 
 ---
 
-## Moving from Static to Dynamic
+## From Simulation to Reality
 
-Module 20 covers the **RL Training Simulation**, which acts as the "connective tissue" that brings the Environment, the Judge, and the Data together. 
-
-In Phase 4, we don't just run queries; we run **episodes**. An episode is a single trial where the AI tries something, sees the result, and learns from the reward.
+Module 20 covers the **Neural Policy Training** phase, where GraphCortex transitions from validating logic to actually learning behaviors. We've moved beyond the "Skeleton Trainer" and implemented a production-grade **PyTorch Reinforcement Learning** pipeline.
 
 ---
 
-## The Simulation Architecture
+## The Neural Architecture (`policy.py`)
 
-The `RLSkeletonTrainer` is designed as a **Policy Simulation**. It simulates a high-end Reinforcement Learning algorithm called **GRPO (Group Relative Policy Optimization)**.
+The `LibrarianPolicy` is a Multi-Layer Perceptron (MLP) that acts as the "decision engine" for graph curation.
 
-### Why GRPO?
-GRPO is a modern RL algorithm (used in models like DeepSeek-R1) that calculates rewards relative to a group of outcomes rather than a fixed baseline. This makes it incredibly effective for task-oriented agents like the Graph Librarian.
+- **Input Layer**: 768-dimensional vector (Semantic embedding of the current graph context).
+- **Hidden Layers**: Two 128-node ReLU layers with Dropout (0.1) for regularization.
+- **Output Layer**: 4-dimensional Softmax (Probabilities for NOOP, ADD, UPDATE, SOFT-DELETE).
 
-### The Trainer Loop
-The `run_training_loop()` function executes a structured lifecycle for every sample in the dataset:
+### Hardware Acceleration (MPS)
+To enable high-speed training on local hardware, the trainer utilizes **Apple Silicon MPS (Metal Performance Shaders)**. This allows the system to perform backpropagation on the M4 GPU, making neural fine-tuning feasible on a laptop.
+
+---
+
+## The Learning Algorithm: REINFORCE
+
+We utilize the **REINFORCE (Policy Gradient)** algorithm to update the Librarian's weights based on performance.
+
+### The Training Loop
+The `RLPyTorchTrainer` executes a genuine deep learning lifecycle for each sample:
 
 ```python
-for ep, sample in enumerate(samples):
-    # 1. Reset: Load a new HotpotQA question into the environment
-    state, _ = self.env.reset(options={"subgraph_context": sample['question']})
+for ep in range(episodes):
+    # 1. Forward Pass: Get action probabilities from the MLP
+    action_probs = self.policy(state_tensor)
+    m = Categorical(action_probs)
+    action = m.sample()
     
-    # 2. Rollout: Simulate the Librarian's decision
-    # (ADD, UPDATE, or SOFT-DELETE)
-    next_state, _, _, _, info = self.env.step(simulated_action, kwargs)
+    # 2. Execution: perform the graph mutation in Neo4j
+    next_state, reward, done, _ = self.env.step(action.item())
     
-    # 3. Reward: Ask the LLM Judge to grade the resulting graph quality
-    score = self.judge.evaluate_answer(sample['question'], ground_truth, agent_answer)
+    # 3. Loss Calculation: -log_prob * reward
+    # Rewards come from the LLM-as-a-Judge Reward Pipeline
+    loss = -m.log_prob(action) * reward
     
-    # 4. Learning: Simulated Backpropagation
-    # In a real cluster, this is where PyTorch updates the model weights.
-    # In our simulator, we log the reward for verification.
+    # 4. Backpropagation: Update neural weights via Optimizer
+    self.optimizer.zero_grad()
+    loss.backward()
+    self.optimizer.step()
 ```
 
 ---
 
-## Local Simulation vs. Cloud Training
+## Production Weight Management
 
-One of the most important concepts in Module 20 is the separation of **Logic** and **Compute**.
+The trainer periodically serializes the learned weights into a persistent file: `librarian_policy_weights.pt`.
 
-| local Simulator (Mac/M3) | Cloud Trainer (NVIDIA H100) |
-| :--- | :--- |
-| **Logic Verification**: Tests if the Gym environment works. | **Policy Learning**: Performs trillions of floating-point ops. |
-| **Forward Pass**: Calculates rewards and states. | **Backward Pass**: Calculates gradients and updates weights. |
-| **Skeleton Code**: `trainer.py` handles the orchestration. | **VeRL Framework**: `trainer.py` logic is ported to the cluster. |
-
-### The "Skeleton" Design
-The reason we call it a "Skeleton" trainer is that it contains 100% of the **integration logic** but 0% of the **computational overhead**. This allows you to verify that your whole Phase 4 system is "ready for lift-off" without needing a $40,000 GPU server.
+1.  **Checkpointing**: Every 50 episodes, the model state is saved.
+2.  **Hot-Swapping**: The live `LibrarianAgent` in the CLI is designed to detect and load this `.pt` file on startup. This creates a seamless "Train -> Deploy" loop where the agent's intelligence grows over time.
 
 ---
 
-## How to Run a Training Trial
-To see the "Brain" in action, run the CLI and use the training command:
+## How to Start a Training Run
+To initiate a localized deep learning session, use the specialized CLI command:
 ```bash
 /train
 ```
-This will trigger the `RLSkeletonTrainer` to run 3 sample episodes through your local Neo4j instance, proving that your Librarian Agent is ready for official fine-tuning.
+This triggers the `RLPyTorchTrainer` to run a trial batch (e.g., 3 episodes) using the HotpotQA dataset, updating the local neural policy based on live LLM feedback.

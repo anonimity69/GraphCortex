@@ -116,6 +116,15 @@ A monolithic script mixing Neo4j queries, LLM calls, and math formulas creates "
 │  db/schema_migrations.py — Constraints & indexes    │
 │  db/queries/retrieval_queries.py — Raw Cypher       │
 │  storage/sharding.py — Property offloading          │
+└─────────────────────┬───────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────┐
+│              INTELLIGENCE LAYER                      │
+│  (Active Learning & Goal-Directed Optimization)      │
+│                                                     │
+│  rl/trainer.py — PyTorch REINFORCE pipeline         │
+│  rl/policy.py — Neural MLP Decision Engine           │
+│  agents/librarian.py — Production curate actor      │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -138,5 +147,6 @@ A monolithic script mixing Neo4j queries, LLM calls, and math formulas creates "
 | Relationship types | ❌ Metadata only | ✅ First-class `[:IS_A]`, `[:BELONGS_TO]` |
 | Associative recall | ❌ Isolated chunks | ✅ Spreading Activation |
 | Topological context | ❌ None | ✅ Full graph structure |
+| **Intelligence Layer** | ❌ Static database | ✅ Active RL curation swarm |
 
-**The one-liner:** *"Vector databases are flat. Memory is not flat. Memory has topology — things connect to other things, and those connections matter."*
+**The one-liner:** *"Vector databases are flat. Memory is not flat. Memory has topology — things connect to other things, and those connections matter. And with the Librarian Agent, that topology is now alive."*

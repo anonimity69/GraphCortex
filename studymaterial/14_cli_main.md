@@ -1,190 +1,72 @@
-# Module 14: CLI Entry Point
+# Module 14: Multi-Agent CLI Interface
 
 ## File Covered
 `src/graph_cortex/interfaces/cli/main.py`
 
 ---
 
-## What This File Does
+## The Interface Ecosystem
 
-This is the **interface layer** — where the outside world enters GraphCortex. It wires together the infrastructure (schema), core (memory + retrieval), and config (logger) into an end-to-end executable demonstration.
+GraphCortex is no longer just a database; it is a **Distributed Multi-Agent Swarm**. The CLI serves as the central command-and-control center where the Researcher, Summarizer, and Librarian agents collaborate in real-time.
 
-This file serves two purposes:
-1. **Verification script** — Proves the entire system works end-to-end.
-2. **Reference implementation** — Shows exactly how to use the GraphCortex API.
+### The Swarm Architecture
 
----
-
-## Full Code with Line-by-Line Explanation
-
-### Imports
-
-```python
-import uuid
-import sys
-import json
-from graph_cortex.infrastructure.db.schema_migrations import initialize_schema
-from graph_cortex.core.memory.manager import MemoryManager
-from graph_cortex.core.retrieval.engine import RetrievalEngine
-```
-
-| Import | Layer | Purpose |
-|---|---|---|
-| `initialize_schema` | Infrastructure | Creates database constraints + vector indexes |
-| `MemoryManager` | Core | Memory orchestrator API |
-| `RetrievalEngine` | Core | Retrieval orchestrator API |
-
-Notice how the CLI **only** imports from `infrastructure` (for schema setup) and `core` (for everything else). It never touches the database directly.
-
-### The `main()` Function
-
-#### Phase 0: Database Setup
-
-```python
-def main():
-    print("Welcome to GraphCortex CLI Native Interface.")
-    print("Initializing Database Schema...")
-    
-    # This might fail gracefully if Neo4j isn't active
-    initialize_schema()
-```
-**Schema initialization.** Creates all constraints, indexes, and vector indexes. Safe to call multiple times (all queries use `IF NOT EXISTS`). If Neo4j is offline, it prints a warning but doesn't crash.
-
-#### Phase 1: Working Memory — Ingesting a Conversation
-
-```python
-    print("\nStarting memory integration...")
-    manager = MemoryManager()
-    
-    session_id = f"session_{uuid.uuid4().hex[:8]}"
-```
-Creates a unique session ID like `session_82dd0f7b`. The `hex[:8]` gives us the first 8 hex characters — short enough to read, unique enough to avoid collisions.
-
-```python
-    print(f"\n[Working Memory] Processing conversation turn for session: {session_id}")
-    manager.process_turn(
-        session_id=session_id,
-        user_input="How does clean architecture improve graph database access?",
-        agent_response="By strictly decoupling the Neo4j driver queries (infrastructure) from the raw data structures (core domain), the codebase becomes modular and easily testable."
-    )
-```
-**This single call creates 3 nodes and 4 relationships:**
-```
-(Interaction: session_82dd0f7b)
-    ├──[:CONTAINS]──→ (Message: role=user, "How does clean architecture...")
-    │                     └──[:NEXT]──→
-    └──[:CONTAINS]──→ (Message: role=agent, "By strictly decoupling...")
-```
-
-#### Phase 1→2 Bridge: Episodic + Semantic Memory
-
-```python
-    print("\n[Episodic & Semantic Memory] Consolidating episode...")
-    summary = "User asked about Clean Architecture in graphs; agent explained decoupling driver from domain."
-    extracted_entities = [
-        {"entity": "Clean Architecture", "concept": "Software Design", "relation": "IS_A_PATTERN_OF"},
-        {"entity": "Neo4j Driver", "concept": "Infrastructure", "relation": "BELONGS_TO_LAYER"}
-    ]
-    
-    event_id = manager.consolidate_episode(session_id, summary, extracted_entities)
-    print(f"Episode consolidated with Event ID: {event_id}")
-```
-
-**This single call triggers a cascade:**
-1. Property Sharder stores the summary text
-2. Episodic Memory creates an Event node and chains it chronologically
-3. For each extracted entity pair:
-   - Creates/updates Entity node with 768-dim embedding
-   - Creates/updates Concept node with 768-dim embedding
-   - Links both to the Event via `[:EXTRACTED_FROM]`
-   - Creates the domain relationship (e.g., `[:IS_A_PATTERN_OF]`)
-
-**After this call, the full Knowledge Graph looks like:**
-```
-(Interaction: session_82dd0f7b)
-    ├── Message: user input
-    ├── Message: agent response
-    └── ← [:SUMMARIZES] ── (Event: "User asked about Clean Architecture...")
-                                ├── ← [:EXTRACTED_FROM] ── (Entity: "Clean Architecture")
-                                │                              └── [:IS_A_PATTERN_OF] → (Concept: "Software Design")
-                                └── ← [:EXTRACTED_FROM] ── (Entity: "Neo4j Driver")
-                                                               └── [:BELONGS_TO_LAYER] → (Concept: "Infrastructure")
-```
-
-#### Phase 2+3: Retrieval Engine — Semantic Recall
-
-```python
-    print("\n==================================")
-    print("[Retrieval Engine] Testing Spreading Activation...")
-    retriever = RetrievalEngine(cutoff_threshold=0.2, max_depth=3)
-    
-    # Search for an anchor using a synonymous term to inherently force Semantic Vector Fallback
-    query = ["System Design"]
-    print(f"Triggering Search for Concept: {query}")
-    
-    results = retriever.retrieve(query)
-```
-
-**The deliberate test:** We search for `"System Design"` — a term that does NOT exist in the graph. This forces the system through the full dual-trigger pipeline:
-1. Lexical search → MISS (no node named "System Design")
-2. Semantic vector fallback → HIT ("System Design" ≈ "Software Design" at cosine 0.95)
-3. Spreading Activation → BFS fan-out from anchors
-4. Lateral Inhibition → Filter out hubs
-
-```python
-    if results["status"] == "Hit":
-        print(f"\n[ANCHORS FOUND]: {results['anchors']}")
-        print(f"[ACTIVATED NETWORK]:")
-        for node in results["network"]:
-            print(f"  -> [{node['distance']} hops away] {node['type']}: {node['name']}")
-        print(f"[INHIBITED HUBS]: {results['inhibited_hubs']}")
-    else:
-        print("\n[MISS] No relevant anchors found.")
-```
-
-**Expected output:**
-```
-[ANCHORS FOUND]: ['Software Design', 'Clean Architecture']
-[ACTIVATED NETWORK]:
-  -> [0 hops away] Entity: Software Design
-  -> [0 hops away] Entity: Clean Architecture
-  -> [2 hops away] Event: None
-  -> [2 hops away] Concept: Software Design
-  -> [3 hops away] Entity: Neo4j Driver
-  -> [3 hops away] Concept: Infrastructure
-  ...
-```
-
-```python
-    print("\nPhase 3 Vector Semantic Verification Complete! Check /Logs for tracking.")
-
-if __name__ == "__main__":
-    sys.exit(main())
-```
-
-`sys.exit(main())` — `main()` returns `None` (implicitly), which maps to exit code 0 (success). If an unhandled exception occurs, Python exits with code 1.
+1.  **Researcher Agent**: Navigates the graph to find connected context for your queries.
+2.  **Summarizer Agent**: Background worker that compresses conversations into factual nodes.
+3.  **Librarian Agent**: Active maintenance agent that optimizes the graph using Reinforcement Learning.
 
 ---
 
-## How to Use This as a Template
+## 🚀 System Boot Sequence
 
-To add GraphCortex to your own AI agent:
+When you run `python src/graph_cortex/interfaces/cli/main.py`, the system executes a multi-stage startup:
+
+### 1. Zero-Noise Logging
+The system suppresses standard Ray and uvicorn logs, redirecting all architectural events to `Logs/admin_system.log`. This ensures the CLI remains a clean, distraction-free playground.
+
+### 2. Ray Serve & LLM Routing
+The CLI initializes a local **Ray cluster** and deploys the `LLMEngineDeployment`. This allows all agents in the swarm to communicate with the central Gemini 2.0 router asynchronously.
+
+### 3. Librarian Weight Loading
+During initialization, the Librarian Agent scans the root directory for `librarian_policy_weights.pt`. If found, it automatically loads its trained neural network state, transitioning from random heuristics to active, learned intelligence.
+
+---
+
+## 🛠️ CLI Command Reference
+
+| Command | Category | Description |
+| :--- | :--- | :--- |
+| `/help` | General | Displays the command menu. |
+| `/stats` | Health | Verifies that all agents in the swarm are alive and responding. |
+| `/data` | Dashboard| Shows live Neo4j node counts and RL training dataset statistics. |
+| `/train` | RL | **Neural Fine-Tuning**. Runs local PyTorch REINFORCE trials on Apple Silicon. |
+| `/curate` | Maintenance | **Active Curation**. Manually triggers a maintenance cycle (Sanitization + RL optimization). |
+| `/clear` | Memory | Flushes the current Working Memory and starts a fresh session. |
+| `/exit` | Shutdown | Gracefully terminates Ray Serve and synchronizes background tasks. |
+
+---
+
+## 🤖 Automatic Background Maintenance
+
+One of the most critical features documented in this file is the **Background Maintenance Loop**.
 
 ```python
-from graph_cortex.core.memory.manager import MemoryManager
-from graph_cortex.core.retrieval.engine import RetrievalEngine
-
-# 1. Ingest a conversation
-manager = MemoryManager()
-manager.process_turn(session_id="chat_001", user_input="...", agent_response="...")
-
-# 2. Consolidate with LLM-extracted facts
-manager.consolidate_episode("chat_001", summary="...", extracted_entities=[...])
-
-# 3. Recall relevant knowledge
-engine = RetrievalEngine()
-results = engine.retrieve(["relevant search terms"])
-
-# 4. Feed the activated network into your LLM's context
-context = results["network"]  # Pass this to your prompt
+async def background_librarian_task(librarian_agent):
+    while True:
+        await asyncio.sleep(60) # Wake up every minute
+        librarian_agent.curate(context="Auto-maintenance cycle")
 ```
+
+Every 60 seconds, the Librarian Agent wakes up and performs a two-stage sweep:
+1.  **Auto-Sanitize**: It proactively hunts for "Rate Limit" or "System Error" nodes and flags them as inactive.
+2.  **RL Optimization**: It uses its neural policy to mutate the graph topology, ensuring the most important information is always closest to the Research Agent's activation path.
+
+---
+
+## How to Interact with the Swarm
+
+The CLI uses a high-performance `asyncio` loop to ensure you can chat with the Researcher while the Summarizer and Librarian work in the background.
+
+1.  **Ask a Question**: The Researcher triggers **Hybrid Search** (BM25 + Semantic) to find answers.
+2.  **Observe Logs**: Open a second terminal and run `tail -f Logs/admin_system.log` to see the agents talking to each other.
+3.  **Optimize**: Use `/train` to improve the Librarian's intelligence, or `/curate` to see it clean up your graph in real-time.

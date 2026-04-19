@@ -15,7 +15,7 @@ If the Librarian modifies the graph, we need to know if that modification made i
 
 ## HotpotQA: The Gold Standard for Graphs
 
-GraphCortex uses a subset of the **HotpotQA** dataset for its RL training cycles. 
+GraphCortex uses the full **HotpotQA** dataset for its RL training cycles. 
 
 ### What is HotpotQA?
 HotpotQA is a multi-hop question-answering dataset. Unlike standard SQuAD-style datasets where the answer is in a single paragraph, HotpotQA requires the AI to:
@@ -36,9 +36,9 @@ The `prepare_rl_dataset.py` script automates the retrieval of this "fuel."
 from datasets import load_dataset
 
 def prepare_dataset():
-    # Load 100 samples from the HotpotQA validation set
-    dataset = load_dataset("hotpot_qa", "distractor", split="validation")
-    subset = dataset.select(range(100))
+    # Load the full training split from HotpotQA
+    dataset = load_dataset("hotpot_qa", "distractor", split="train")
+    subset = dataset # Pull the entire split for production training
     
     # Export to JSONL (JSON Lines) for efficient line-by-line reading
     file_path = "data/rl_training/hotpot_qa_sample.jsonl"
@@ -64,4 +64,4 @@ To prepare the fuel for your training sessions, run:
 ```bash
 python scripts/prepare_rl_dataset.py
 ```
-This creates the `data/rl_training/` directory and populates it with the samples needed for Phase 4.
+This creates the `data/rl_training/` directory and populates it with the full scale of reasoning samples needed for neural policy optimization.

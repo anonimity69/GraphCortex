@@ -1,22 +1,24 @@
-# Module 17: RL Memory Curation (The Intelligence Layer)
+# Module 17: RL Memory Curation (Production Librarian)
 
 ## Files Covered
 - `src/graph_cortex/core/rl/action_env.py`
 - `src/graph_cortex/core/rl/reward_judge.py`
+- `src/graph_cortex/core/agents/librarian.py`
+- `src/graph_cortex/core/rl/policy.py`
+- `src/graph_cortex/core/agents/librarian.py`
+- `src/graph_cortex/core/rl/policy.py`
 
 ---
 
 ## What This Layer Does
 
-The **Intelligence Layer** (Phase 4) is where GraphCortex transitions from a passive database to an active, self-optimizing "brain." 
+Instead of manual rule-coding (e.g., "delete nodes older than 30 days"), we use **Reinforcement Learning** to discover the most efficient graph topologies. We deploy a **Production Librarian Agent** that is rewarded for mutating the graph in ways that improve the **Research Agent's** accuracy on real-world reasoning benchmarks.
 
-Instead of manual rule-coding (e.g., "delete nodes older than 30 days"), we use **Reinforcement Learning** to discover the most efficient graph topologies. We deploy a **Librarian Agent** that is rewarded for mutating the graph in ways that improve the **Research Agent's** accuracy on real-world reasoning benchmarks.
-
-### The "Forward-Pass Simulator"
-To avoid the massive compute requirements of local backward-pass training, Phase 4 is implemented as a **Highly Advanced Forward-Pass Simulator**. This allows us to:
-1.  Verify the bridge between LLM actions and Neo4j transactions.
-2.  Test the LLM-as-a-Judge reward pipeline.
-3.  Simulate rollout loops locally before porting to a cloud GPU for official training.
+### From Simulation to Backend Optimization
+While early development focused on a "Forward-Pass Skeleton," the current system utilizes a **Localized PyTorch Policy Network**:
+1.  **Hardware Acceleration**: The policy runs natively on Apple Silicon via **MPS (Metal Performance Shaders)**.
+2.  **Backpropagation**: The system performs real-time gradient descent via the **REINFORCE** algorithm.
+3.  **Autonomous Swarm**: The Librarian is a persistent background actor in the CLI, performing maintenance cycles without user interaction.
 
 ---
 
@@ -33,6 +35,9 @@ class GraphMemoryEnv(gym.Env):
         # 0: NOOP, 1: ADD, 2: UPDATE, 3: SOFT-DELETE
         self.action_space = spaces.Discrete(4)
 ```
+
+### The Production Integration
+The `LibrarianAgent` loads its trained weights from `librarian_policy_weights.pt` on boot. It uses `SentenceTransformer` to encode graph context into 768-D tensors before passing them to the policy network.
 
 ### The Step Function
 The `step()` function is the heart of the environment. It receives an action and its parameters (kwargs) and executes it via the `MemoryCuration` service.
@@ -67,5 +72,15 @@ def evaluate_answer(self, question, ground_truth, agent_answer):
 
 ---
 
+---
+
+## The Auto-Sanitization Heuristic
+
+Beyond its neural policy, the Librarian Agent implements a high-priority **Sanitization Phase** to keep the graph "Logic-Dense":
+
+1.  **Pattern Match**: The agent scans for `Message` nodes containing error artifacts (e.g., "Rate limits or quotas exceeded").
+2.  **Pruning**: It automatically flags these nodes as `is_active: false`.
+3.  **Result**: This prevents the Research Agent from retrieving broken API responses during the Spreading Activation phase, ensuring context windows are reserved for pure factual knowledge.
+
 ## Why This Matters
-By building this "Gymnasium" bridge first, we ensure that when we eventually port to a multi-GPU cluster (using **VeRL** and **GRPO**), the "muscles" (Neo4j curation) and "logic" (prompting/scoring) are already hardened and verified.
+By integrating the Librarian as a production-ready PyTorch actor rather than a static script, GraphCortex achieves **Active Maintenance**. The memory doesn't just grow; it evolves guided by a policy that has been fine-tuned on the full scale of the HotpotQA reasoning dataset.
