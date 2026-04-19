@@ -43,7 +43,7 @@ from graph_cortex.core.memory.manager import MemoryManager
 from graph_cortex.core.agents.researcher import ResearchAgent
 from graph_cortex.core.agents.summarizer import SummaryAgent
 from graph_cortex.infrastructure.inference.llm_router import LLMEngineDeployment
-from graph_cortex.core.rl.trainer import RLSkeletonTrainer
+from graph_cortex.core.rl.trainer import RLPyTorchTrainer
 from graph_cortex.infrastructure.db.neo4j_connection import get_session
 
 console = Console()
