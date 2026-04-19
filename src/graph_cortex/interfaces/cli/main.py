@@ -68,6 +68,9 @@ async def run_repl():
     manager.working.add_interaction(session_id)
     logging.info(f"Initialized new REPL Session: {session_id}")
     
+    # Track background summarization tasks to ensure they finish before CLI exit
+    pending_tasks = set()
+    
     while True:
         try:
             # Safely release the asyncio thread to wait for standard input so it doesn't freeze the console spinner!
@@ -75,6 +78,10 @@ async def run_repl():
             user_input = user_input.strip()
             if not user_input:
                 continue
+                
+            # Allow 'exit' or 'quit' as plain text commands
+            if user_input.lower() in ("exit", "quit"):
+                break
                 
             if user_input.startswith("/"):
                 cmd = user_input.split()[0].lower()
@@ -117,10 +124,16 @@ async def run_repl():
                 except Exception as e:
                     logging.error(f"[Summarizer Error] Background compilation failed: {str(e)}")
             
-            asyncio.create_task(background_consolidation(user_input, agent_response, session_id))
+            task = asyncio.create_task(background_consolidation(user_input, agent_response, session_id))
+            pending_tasks.add(task)
+            task.add_done_callback(pending_tasks.discard)
             
         except (EOFError, KeyboardInterrupt):
             break
+
+    if pending_tasks:
+        with console.status(f"[bold #1D9E75]Syncing {len(pending_tasks)} pending background memories to Neo4j...[/]"):
+            await asyncio.gather(*pending_tasks)
 
     console.print("\n[bold green]GraphCortex Swarm shutting down. Goodbye![/]")
 
