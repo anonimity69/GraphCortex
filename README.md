@@ -33,7 +33,7 @@ It automatically extracts structural facts, tracks chronological interaction his
 | 🕸️ **Semantic Memory** | Global entity-level abstractions and factual relationships. |
 | 🔍 **Hybrid Retrieval** | **(Phase 5)** Parallel BM25 Fulltext + Dense Vector semantic triggers for absolute precision. |
 | ⚡ **Spreading Activation** | Neighbors-of-neighbors retrieval bounded by mathematical Lateral Inhibition. |
-| ⚖️ **RL Librarian** | Phase 4 Fine-Tuning loop that rewards the agent for higher reasoning accuracy. |
+| 🕵️ **RL Librarian** | **(Phase 6-8)** Production PyTorch policy that autonomously optimizes graph topology and prunes noise. |
 | 🔐 **Deterministic LLM** | Configuration-driven, timeout-resistant routing (Supports Gemma 4 31B Open Models). |
 
 ---
@@ -44,7 +44,7 @@ GraphCortex runs on a strictly decoupled, multi-agent architecture powered by **
 
 *   **Researcher Agent**: Navigates graph topology and executes hybrid retrieval.
 *   **Summarizer Agent**: Background actor that extracts knowledge without blocking the user.
-*   **Librarian Agent (RL)**: Self-optimizing curation policy that prunes redundant nodes.
+*   **Librarian Agent (RL)**: Self-optimizing curator that prunes redundant nodes (Auto-sanitizes error artifacts).
 *   **Reward Judge**: LLM-as-a-Judge pipeline that grades agent answers against ground truth.
 
 ---
@@ -61,7 +61,7 @@ GraphCortex is fully executable locally on Mac/Linux with Neo4j.
     ```
 2.  **Dataset Prep** (For Phase 4 Training):
     ```bash
-    python scripts/prepare_rl_dataset.py # Downloads 100 HotpotQA samples
+    python scripts/prepare_rl_dataset.py # Downloads full HotpotQA training split (90k+ samples)
     ```
 3.  **Start the Swarm**:
     ```bash
@@ -71,7 +71,8 @@ GraphCortex is fully executable locally on Mac/Linux with Neo4j.
 ### Interactive CLI Commands
 *   `/help` - Show all available commands.
 *   `/data` - Live dashboard of Neo4j node counts and RL dataset status.
-*   `/train` - **Live RL Session**. Fine-tunes the Librarian policy using local data.
+*   `/train` - **Live RL Session**. Fine-tunes the Librarian policy using local MPS/GPU acceleration.
+*   `/curate` - **Active Curation**. Manually triggers the Librarian to optimize graph topology.
 *   `/clear` - Flush working memory.
 *   `/exit` - Graceful shutdown with background task synchronization.
 

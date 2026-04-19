@@ -45,3 +45,30 @@ We purged all hardcoded legacy strings (e.g., specific Gemini model names) from 
 
 ### Deterministic Feedback Loops for RL
 We established a strict `TEMPERATURE=0.0` ceiling and heavily sanitized string injection pipelines (e.g., stripping Cypher injection risks within the `SummarizerAgent`). The Reward Pipeline strictly demands repeatable extraction formatting, allowing the RL policy gradients to accurately score outputs without the unpredictable noise synonymous with generative creativity.
+## 5. Localized PyTorch RL & Apple Silicon Optimization (Phase 6)
+
+### The Move from Skeleton to Simulation
+Originally, Phase 4 was implemented as a "Skeleton" simulator of logic. To bridge the gap to true intelligence, we migrated the curation policy to a genuine **PyTorch Deep Reinforcement Learning** architecture.
+
+### The Hardware Choice
+To ensure the system remains hardware-agnostic yet incredibly fast on high-end consumer laptops, we opted for **Metal Performance Shaders (MPS)** acceleration. 
+- The `LibrarianPolicy` is a Multi-Layer Perceptron (MLP) mapping 768-dimensional textual embeddings (state) to discrete graph mutations (actions).
+- By using the **REINFORCE (Policy Gradient)** algorithm, the system performs localized backpropagation directly on the Apple Silicon M4 GPU, allowing the AI to "learn" the optimal graph topology for a specific user's logic without needing complex cloud-GPU hyper-scaling during the prototyping phase.
+
+## 6. Multi-Agent Swarm Logic & Production Integration (Phase 7)
+
+### Productionizing the Model
+We decoupled the RL model's architecture into a shared `policy.py` module. This allows the system to load trained PyTorch weight serialize files (`.pt`) directly into the **Librarian Agent** during CLI initialization. 
+
+### Swarm Awareness
+We expanded the agent swarm from two (Researcher/Summarizer) to three. The **Librarian Agent** is now a fully productive member of the swarm, equipped with the knowledge extracted from 90,000+ HotpotQA training samples. It serves as the bridge between raw, generative summarization and structured, retrieved logical truth.
+
+## 7. Automatic Graph Sanitization & Maintenance Loops (Phase 8)
+
+### Identifying Context Noise
+During deployment testing, we discovered that "API Rate Limit" and "System Error" messages were inadvertently being stored as memory nodes. These artifacts create "Semantic Noise," leading to retrieval degradation as the agents attempt to reason over error logs instead of factual data.
+
+### Background "Gardening"
+We implemented an asynchronous **Background Maintenance Task** in the CLI. 
+- Every 60 seconds, the Librarian Agent performs a **Sanitization Sweep**, using a Cypher-based heuristic to hunt down and soft-delete error-related nodes.
+- This ensures the Graph remains "logic-dense," providing the Research Agent with a clean sub-graph context window while preserving the graph's history via the Global Soft-Delete architecture.
