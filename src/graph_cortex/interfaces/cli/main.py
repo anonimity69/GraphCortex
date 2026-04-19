@@ -135,12 +135,12 @@ async def run_repl():
     manager.working.add_interaction(session_id)
     logging.info(f"Initialized new REPL Session: {session_id}")
     
-    # Track background summarization and librarian tasks to ensure they finish before CLI exit
+    # Track background consolidation tasks to ensure they finish before CLI exit
     pending_tasks = set()
     
     # Start the automated Librarian loop
     librarian_task = asyncio.create_task(background_librarian_task(librarian))
-    pending_tasks.add(librarian_task)
+    # librarian_task is NOT in pending_tasks because it's infinite.
     
     while True:
         try:
@@ -168,11 +168,9 @@ async def run_repl():
                     console.print("[bold cyan]Swarm Stats:[/] Ray Cluster Active. Gemini Router Bound. Researcher/Summarizer/Librarian Alive.")
                 elif cmd == "/curate":
                     console.print("[bold yellow]Librarian Agent analyzing Graph topology...[/]")
-                    # Use the last user query or a default as the "state" context
                     context = f"Session {session_id} active. Continuous reasoning required."
                     curation_info = librarian.curate(context)
                     console.print(f"[bold green]Success:[/] Librarian took action: [bold cyan]{curation_info['status']}[/]")
-                    logging.info("User requested /stats.")
                 elif cmd == "/data":
                     # DB Dashboard
                     with get_session() as s:
@@ -195,7 +193,6 @@ async def run_repl():
                 elif cmd == "/train":
                     console.print("[bold yellow]Initiating RL Fine-Tuning Simulation...[/] (HotpotQA Dataset)")
                     trainer = RLPyTorchTrainer()
-                    # Run a small batch to avoid quota exhaustion
                     await asyncio.to_thread(trainer.run_training_loop, episodes=3)
                     console.print("[bold green]Success:[/] RL Session complete. Local policy gradients cached.")
                 elif cmd == "/help":
@@ -227,15 +224,14 @@ async def run_repl():
             console.print(Markdown(agent_response))
             console.print("")
             manager.working.add_message(session_id, role="agent", content=agent_response)
-            logging.info(f"[Response Generated]")
             
-            # Fire summarizer in the background so the user is never blocked while Graph extracts
+            # Fire summarizer in the background
             async def background_consolidation(u_in, a_resp, s_id):
                 try:
                     logging.info("[Summarizer] Beginning background memory consolidation...")
                     extracted = await summarizer.extract_and_consolidate(u_in, a_resp)
                     event_id = manager.consolidate_episode(s_id, extracted.get("summary", ""), extracted.get("entities", []))
-                    logging.info(f"[Summarizer] Success. Episodic Event created: {event_id} with {len(extracted.get('entities', []))} relationships.")
+                    logging.info(f"[Summarizer] Success. Episodic Event created: {event_id}")
                 except Exception as e:
                     logging.error(f"[Summarizer Error] Background compilation failed: {str(e)}")
             
@@ -246,9 +242,11 @@ async def run_repl():
         except (EOFError, KeyboardInterrupt):
             break
 
+    # Shutdown flow
+    librarian_task.cancel()
     if pending_tasks:
         with console.status(f"[bold #1D9E75]Syncing {len(pending_tasks)} pending background memories to Neo4j...[/]"):
-            await asyncio.gather(*pending_tasks)
+            await asyncio.gather(*pending_tasks, return_exceptions=True)
 
     console.print("\n[bold green]GraphCortex Swarm shutting down. Goodbye![/]")
 
