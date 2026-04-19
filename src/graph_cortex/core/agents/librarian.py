@@ -34,8 +34,17 @@ class LibrarianAgent(BaseAgent):
                 logging.info(f"[{self.name}] Successfully loaded trained weights from {model_path}")
             except Exception as e:
                 logging.error(f"[{self.name}] Failed to load model weights: {e}. Falling back to random policy.")
-        else:
-            logging.warning(f"[{self.name}] Weights file '{model_path}' not found. Operating with random initialization.")
+        
+        self.stats = {
+            "sanitized_nodes": 0,
+            "total_curations": 0,
+            "actions": {
+                "NOOP": 0,
+                "ADD": 0,
+                "UPDATE": 0,
+                "DELETE": 0
+            }
+        }
 
     def cleanup_error_nodes(self) -> int:
         """
@@ -54,8 +63,13 @@ class LibrarianAgent(BaseAgent):
             record = result.single()
             count = record["deleted_count"] if record else 0
             if count > 0:
+                self.stats["sanitized_nodes"] += count
                 logging.info(f"[{self.name}] Sanitized {count} error-related nodes from the memory graph.")
             return count
+
+    def get_stats(self) -> dict:
+        """Returns the internal tracking metrics."""
+        return self.stats
 
     def curate(self, state_text: str) -> dict:
         """
@@ -95,6 +109,10 @@ class LibrarianAgent(BaseAgent):
             elif action == 3:  # SOFT-DELETE
                 info["status"] = "delete_pending_target_id"
                 
+            self.stats["total_curations"] += 1
+            action_map = {0: "NOOP", 1: "ADD", 2: "UPDATE", 3: "DELETE"}
+            self.stats["actions"][action_map.get(action, "NOOP")] += 1
+
             logging.info(f"[{self.name}] Decision: Action {action} ({info['status']})")
             return info
             
