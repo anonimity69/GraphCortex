@@ -16,7 +16,10 @@ def initialize_schema():
         
         # Semantic Memory Constraints
         "CREATE CONSTRAINT IF NOT EXISTS FOR (e:Entity) REQUIRE e.name IS UNIQUE",
-        "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Concept) REQUIRE c.name IS UNIQUE"
+        "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Concept) REQUIRE c.name IS UNIQUE",
+        
+        # Global Soft Delete Backfill
+        "MATCH (n) WHERE n.is_active IS NULL SET n.is_active = true"
     ]
     
     # Auto-detect vector dimension from the configured model
