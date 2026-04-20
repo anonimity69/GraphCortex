@@ -19,19 +19,8 @@ def custom_formatwarning(message, category, filename, lineno, *args, **kwargs):
         f.write(f"{category.__name__}: {message} ({filename}:{lineno})\n")
 
 warnings.showwarning = custom_formatwarning
-os.environ["RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO"] = "0"
-os.environ["RAY_SERVE_LOG_LEVEL"] = "error"
-
-# Forcefully silence noisy third-party loggers BEFORE they initialize
-logging.getLogger("ray").setLevel(logging.ERROR)
-logging.getLogger("ray.serve").setLevel(logging.ERROR)
-logging.getLogger("uvicorn").setLevel(logging.ERROR)
-logging.getLogger("uvicorn.access").setLevel(logging.ERROR)
-# ---------------------------------------------------------------------------------
-
-import ray
-from ray import serve
 from dotenv import load_dotenv
+# ---------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------
 
 from rich.console import Console
@@ -43,7 +32,6 @@ from graph_cortex.core.memory.manager import MemoryManager
 from graph_cortex.core.agents.researcher import ResearchAgent
 from graph_cortex.core.agents.summarizer import SummaryAgent
 from graph_cortex.core.agents.librarian import LibrarianAgent
-from graph_cortex.infrastructure.inference.llm_router import LLMEngineDeployment
 from graph_cortex.core.rl.trainer import RLPyTorchTrainer
 from graph_cortex.infrastructure.db.neo4j_connection import get_session
 from rich.table import Table
@@ -89,38 +77,8 @@ async def run_repl():
     console.print(Panel(BANNER, border_style="#1D9E75", padding=(1, 2), expand=False))
     
     with console.status("[bold #1D9E75]Initializing Database Schema and Soft-Deletion Constraints...[/]") as status:
-        # Explicitly reload .env to ensure the latest API keys are loaded into the current process
         load_dotenv(override=True)
-        api_key = os.getenv("GEMINI_API_KEY")
-        model_name = os.getenv("LLM_MODEL")
-
         initialize_schema()
-        
-        status.update("[bold #7F77DD]Connecting to local Ray cluster...[/]")
-        # Suppress massive ray dashboard logs on standard out for clean REPL
-        if not ray.is_initialized():
-            try:
-                ray.init(
-                    ignore_reinit_error=True, 
-                    log_to_driver=False, 
-                    include_dashboard=False,
-                    logging_level=logging.ERROR,
-                    configure_logging=True
-                )
-            except ConnectionError:
-                os.environ.pop("RAY_ADDRESS", None)
-                ray.init(
-                    ignore_reinit_error=True, 
-                    log_to_driver=False, 
-                    include_dashboard=False,
-                    logging_level=logging.ERROR,
-                    configure_logging=True
-                )
-            
-        status.update("[bold #1D9E75]Deploying LLM Router via Ray Serve...[/]")
-        serve.start(detached=True)
-        # Use bind() parameters to force-feed the fresh API key into the Ray workers
-        serve.run(LLMEngineDeployment.bind(api_key=api_key, model=model_name), name="LLMEngineDeployment", route_prefix="/llm")
         
         manager = MemoryManager()
         researcher = ResearchAgent()
@@ -166,7 +124,7 @@ async def run_repl():
                     console.print(f"[bold cyan]Current Active Session:[/] {session_id}")
                     logging.info("User requested /history.")
                 elif cmd == "/stats":
-                    console.print("[bold cyan]Swarm Stats:[/] Ray Cluster Active. Gemini Router Bound. Researcher/Summarizer/Librarian Alive.")
+                    console.print("[bold cyan]Swarm Stats:[/] Local Swarm Active (Direct SDK). Researcher/Summarizer/Librarian Alive.")
                 elif cmd == "/monitor":
                     stats = librarian.get_stats()
                     

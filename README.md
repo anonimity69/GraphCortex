@@ -17,7 +17,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/arch-clean%20architecture-1D9E75?style=flat-square&labelColor=085041" />
   <img src="https://img.shields.io/badge/db-neo4j-7F77DD?style=flat-square&labelColor=3C3489" />
-  <img src="https://img.shields.io/badge/compute-ray%20serve-1D9E75?style=flat-square&labelColor=085041" />
+  <img src="https://img.shields.io/badge/compute-direct%20sdk-1D9E75?style=flat-square&labelColor=085041" />
   <img src="https://img.shields.io/badge/search-hybrid%20bm25-7F77DD?style=flat-square&labelColor=3C3489" />
   <img src="https://img.shields.io/badge/rl-grpo%20fine--tuning-1D9E75?style=flat-square&labelColor=085041" />
 </p>
@@ -46,7 +46,7 @@ The result is a memory system that degrades at exactly the moment your agent nee
 
 ## GraphCortex
 
-GraphCortex is a **self-optimizing memory layer** built on Neo4j and orchestrated by a distributed Ray Serve cluster. It combines a multi-agent swarm with a reinforcement learning policy to maintain a knowledge graph that doesn't just store information—it actively restructures itself to reason better over time.
+GraphCortex is a **self-optimizing memory layer** built on Neo4j. It combines a multi-agent swarm with a reinforcement learning policy to maintain a knowledge graph that doesn't just store information—it actively restructures itself to reason better over time.
 
 **This is not another RAG wrapper.** Tools like LlamaIndex give you better retrieval *from* a static graph. GraphCortex gives you a graph that gets *structurally better* the more it's used. The difference is whether your memory system is passive infrastructure or an active, learning participant.
 
@@ -54,7 +54,7 @@ GraphCortex is a **self-optimizing memory layer** built on Neo4j and orchestrate
 
 ## How it works
 
-Three specialized agents run concurrently on a Ray Serve cluster:
+Three specialized agents run concurrently in the GraphCortex Swarm:
 
 ### Researcher Agent
 Handles every query. Uses a Spreading Activation algorithm with Lateral Inhibition to pull tight, relevant context sub-graphs—avoiding the "Hub Explosion" problem where over-connected nodes dominate every result regardless of relevance.
@@ -101,29 +101,34 @@ The policy is trained via GRPO fine-tuning. Better graph usage → stronger rewa
 
 ---
 
-## Prerequisites
+## Quickstart (The Swarm CLI)
 
-- **Python 3.10+** (Apple Silicon optimized)
-- **Neo4j Database** (v5.0+)
-- **LLM API Key** (Gemini, OpenAI, or OpenRouter)
-
-## Quickstart
-
-Set up the environment and launch the agent swarm locally.
+Deploy the full stack — Neo4j and the Swarm CLI — in one command. Optimized for **Apple Silicon (ARM64)**.
 
 ```bash
-# 1. Clone and install
+# 1. Clone
 git clone https://github.com/anonimity69/GraphCortex.git
 cd GraphCortex
 
-# 2. Setup environment
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
+# 2. Configure
+cp .env.example .env  # Add your GEMINI_API_KEY and NEO4J credentials
 
-# 3. Configure
-cp .env.example .env  # Add your API keys and Neo4j credentials
+# 3. Launch
+./setup.sh
 ```
+
+### Accessing the Swarm
+
+Once the containers are running, enter the interactive memory environment:
+
+```bash
+docker attach graphcortex_swarm
+```
+
+| Service | Address |
+|---|---|
+| **Memory REPL** | `docker attach graphcortex_swarm` |
+| **Neo4j Browser** | `http://localhost:7474` |
 
 ---
 
@@ -172,10 +177,9 @@ GraphCortex is built on the premise that agent memory should be a first-class, s
 | Layer | Technology |
 |---|---|
 | Graph Database | Neo4j |
-| Distributed Agents | Ray Serve + Asyncio |
+| Swarm Engine | Asyncio + Direct SDK |
 | RL Policy | PyTorch (GRPO fine-tuning) |
 | Search | Hybrid BM25 + vector |
-| API | FastAPI |
 | LLM Routing | Gemini / OpenAI / OpenRouter |
 
 ---
