@@ -26,3 +26,6 @@ build-backend = "setuptools.build_meta"
 
 [project.scripts]
 graphcortex-cli = "graph_cortex.interfaces.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
