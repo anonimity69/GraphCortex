@@ -89,6 +89,75 @@ The policy is trained via GRPO fine-tuning. Better graph usage → stronger rewa
 
 ---
 
+## Architecture & Data Flow
+
+### System Architecture
+
+```mermaid
+graph TD
+    User([User]) <--> CLI[Swarm CLI]
+    
+    subgraph Swarm[GraphCortex Swarm Engine]
+        Researcher[Researcher Agent]
+        Summarizer[Summarizer Agent]
+        Librarian[Librarian Agent]
+    end
+    
+    CLI <--> Researcher
+    Researcher --> RetrievalEngine[Retrieval Engine]
+    RetrievalEngine --> Inhibition[Lateral Inhibition]
+    
+    CLI --> Summarizer
+    Summarizer --> Ingestion[Memory Ingestion]
+    
+    Librarian --> RL[RL Training Policy]
+    RL --> GraphOps[Graph Operations: Merge/Prune/Strengthen]
+    
+    subgraph Core[Core Infrastructure]
+        Neo4j[(Neo4j Graph DB)]
+        LLM[LLM API: Gemini/OpenAI]
+    end
+    
+    RetrievalEngine <--> Neo4j
+    Ingestion --> Neo4j
+    GraphOps --> Neo4j
+    Researcher <--> LLM
+    Summarizer <--> LLM
+    Librarian <--> LLM
+```
+
+### Swarm Data Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Swarm CLI
+    participant R as Researcher Agent
+    participant S as Summarizer Agent
+    participant L as Librarian Agent (Background)
+    participant DB as Neo4j Graph DB
+
+    U->>C: Input Prompt
+    C->>R: Process Query
+    R->>DB: Spreading Activation (BM25 + Semantic)
+    DB-->>R: Relevant Context Sub-graph
+    R->>R: Apply Lateral Inhibition
+    R->>C: Response Context
+    C-->>U: Final Answer
+
+    C->>S: Conversation Turn Data
+    S->>S: Entity/Relation Extraction
+    S->>DB: Update Episodic Memory
+
+    loop Background RL Loop
+        L->>DB: Monitor Graph Heat & Centrality
+        L->>L: Evaluate Policy (Merge/Prune/Strengthen)
+        L->>DB: Optimize Graph Structure (Self-Healing)
+    end
+```
+
+---
+
 ## System Health & Metrics
 
 | Metric | Status | Value |
