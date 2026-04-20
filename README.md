@@ -2,8 +2,6 @@
   <img src="./assets/banner.svg" width="100%" alt="GraphCortex" />
 </p>
 
-<h1 align="center">GraphCortex</h1>
-
 <p align="center">
   <strong>The self-healing memory layer for AI agents.</strong><br />
   A knowledge graph that autonomously cleans, merges, and optimizes itself—powered by reinforcement learning.
