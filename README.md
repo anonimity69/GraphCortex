@@ -103,7 +103,7 @@ The policy is trained via GRPO fine-tuning. Better graph usage → stronger rewa
 
 ## Quickstart (The Swarm CLI)
 
-Deploy the full stack — Neo4j and the Swarm CLI — in one command. Optimized for **Apple Silicon (ARM64)**.
+Deploy the full stack — Neo4j and the Swarm CLI — in one command. Supports **Mac (Intel/Apple Silicon)**, **Windows (WSL2/Git Bash)**, and **Linux**.
 
 ```bash
 # 1. Clone
