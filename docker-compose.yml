@@ -35,7 +35,17 @@ services:
       - .env
     environment:
       - NEO4J_URI=bolt://neo4j:7687
+      - EMBEDDING_DEVICE=cpu # Change to 'cuda' if using NVIDIA GPU on Win/Linux
+      - HF_HOME=/app/data/huggingface
       - PYTHONPATH=/app/src
+    # Uncomment the section below to enable NVIDIA GPU support (Linux/Windows only)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
     volumes:
       - .:/app
       - ./Logs:/app/Logs
