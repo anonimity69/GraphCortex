@@ -106,29 +106,31 @@ The policy is trained via GRPO fine-tuning. Better graph usage → stronger rewa
 Deploy the full stack — Neo4j and the Swarm CLI — in one command. Supports **Mac (Intel/Apple Silicon)**, **Windows (WSL2/Git Bash)**, and **Linux**.
 
 ```bash
-# 1. Clone
+# 1. Clone & Configure
 git clone https://github.com/anonimity69/GraphCortex.git
 cd GraphCortex
+cp .env.example .env  # Add your GEMINI_API_KEY
 
-# 2. Configure
-cp .env.example .env  # Add your GEMINI_API_KEY and NEO4J credentials
-
-# 3. Launch
+# 2. Launch (One Command)
+chmod +x setup.sh shutdown.sh
 ./setup.sh
 ```
 
-### Accessing the Swarm
+### Swarm Control
 
-Once the containers are running, enter the interactive memory environment:
-
-```bash
-docker attach graphcortex_swarm
-```
-
-| Service | Address |
+| Action | Command |
 |---|---|
-| **Memory REPL** | `docker attach graphcortex_swarm` |
-| **Neo4j Browser** | `http://localhost:7474` |
+| **Start / Re-enter Swarm** | `./setup.sh` |
+| **Stop Swarm** | `./shutdown.sh` |
+| **Neo4j Browser** | [http://localhost:7475](http://localhost:7475) |
+
+**Note**: When you run `./setup.sh`, it will automatically check for port conflicts, wait for the database to stabilize with a progress bar, and then automatically attach you to the Swarm CLI.
+
+| Service | Host Port | Internal Port |
+|---|---|---|
+| **Memory REPL** | (Interactive) | N/A |
+| **Neo4j HTTP** | `7475` | `7474` |
+| **Neo4j Bolt** | `7688` | `7687` |
 
 ---
 

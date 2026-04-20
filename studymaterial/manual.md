@@ -25,7 +25,7 @@ This guide is designed to give you total mastery over every line of code in Grap
 | 13 | [Logger Configuration](./13_logger.md) | `logger.py` | Phase 3 |
 | 14 | [CLI Entry Point](./14_cli_main.md) | `main.py` | All |
 | 15 | [End-to-End Data Flow Walkthrough](./15_data_flow.md) | — | All |
-| 16 | [Distributed Orchestration (Ray)](./16_distributed_orchestration.md) | `llm_router.py`, `base_agent.py` | Phase 3 |
+| 16 | [Direct SDK Orchestration](./16_distributed_orchestration.md) | `llm_client.py`, `base_agent.py` | Phase 3 |
 | 17 | [RL Memory Curation (Intelligence Layer)](./17_rl_memory_curation.md) | `action_env.py`, `reward_judge.py` | Phase 4 |
 | 18 | [Graph Curation Logic (The Muscles)](./18_graph_curation_logic.md) | `curation.py` | Phase 4 |
 | 19 | [RL Dataset Preparation (The Fuel)](./19_rl_dataset_preparation.md) | `prepare_rl_dataset.py` | Phase 4 |
@@ -250,9 +250,7 @@ A monolithic script mixing Neo4j queries, LLM calls, and math formulas creates "
 ## docker-compose.yml — Line by Line
 
 ```yaml
-version: '3.8'
-```
-**What it does:** Declares the Docker Compose file format version. Version 3.8 is the most widely supported modern format.
+---
 
 ```yaml
 services:
@@ -271,12 +269,12 @@ services:
 
 ```yaml
     ports:
-      - "7474:7474" # HTTP port for Neo4j Browser
-      - "7687:7687" # Bolt port
+      - "7475:7474" # HTTP port for Neo4j Browser
+      - "7688:7687" # Bolt port
 ```
 **What it does:** Maps container ports to your local machine.
-- **7474** → Neo4j Browser (the web UI at `http://localhost:7474` where you can visualise the graph)
-- **7687** → Bolt protocol (the binary protocol that the Python `neo4j` driver uses to communicate with the database)
+- **7475** → Neo4j Browser (the web UI at `http://localhost:7475`)
+- **7688** → Bolt protocol (used by the Python driver)
 
 ```yaml
     environment:
@@ -310,9 +308,9 @@ services:
 ```yaml
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
+      interval: 5s
+      timeout: 5s
+      retries: 10
 ```
 **What it does:** Docker periodically checks if Neo4j is healthy by hitting the HTTP endpoint. If it fails 5 times in a row, Docker marks the container as unhealthy. This is useful for orchestration tools (Kubernetes, etc.) that need to know if the service is genuinely ready.
 
@@ -330,7 +328,7 @@ NEO4J_PASSWORD=cortex_secure_graph_99!
 
 | Variable | Value | Explanation |
 |---|---|---|
-| `NEO4J_URI` | `neo4j://127.0.0.1:7687` | The connection URI. `neo4j://` is the routing protocol (supports clustering). `bolt://` is the direct protocol. Both work for single-instance setups. We use `neo4j://` because Neo4j Desktop defaults to it. |
+| `NEO4J_URI` | `bolt://127.0.0.1:7688` | The connection URI. We use `7688` on the host to avoid conflict with local Neo4j Desktop (7687). |
 | `NEO4J_USERNAME` | `neo4j` | The default admin username. Neo4j always creates this user on first boot. |
 | `NEO4J_PASSWORD` | `cortex_secure_graph_99!` | The password you set when creating the database. |
 
@@ -395,7 +393,7 @@ Creating a Neo4j driver is expensive — it establishes a TCP connection pool, n
 By overriding `__new__`, we intercept the creation step. If `_instance` is `None` (first call), we create the object normally. On every subsequent call, we skip creation and return the existing instance.
 
 ```python
-            uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+            uri = os.getenv("NEO4J_URI", "bolt://localhost:7688")
             username = os.getenv("NEO4J_USERNAME", "neo4j")
             password = os.getenv("NEO4J_PASSWORD", "changeme123")
 ```
@@ -3206,13 +3204,13 @@ graph TD
 Phase 3 successfully transformed GraphCortex from a purely lexical retrieval system into a **hybrid semantic-lexical engine**. The system now understands meaning, not just strings. A query for `"System Design"` correctly recalls `"Software Design"` (0.95 cosine) and `"Clean Architecture"` (0.82 cosine) — concepts that share zero common words but deep semantic relationships.
 
 The upgrade to `bge-base-en-v1.5` with Apple Silicon MPS acceleration ensures this runs at production speed on the M4 MacBook Air, and the migration away from APOC dependencies future-proofs the codebase against Neo4j version changes.
-# Module 16: Distributed Orchestration (Ray)
+# Module 16: Direct SDK Orchestration
 
 ## Files Covered
-- `src/graph_cortex/infrastructure/inference/llm_router.py`
+- `src/graph_cortex/infrastructure/inference/llm_client.py`
 - `src/graph_cortex/core/agents/base_agent.py`
 - `src/graph_cortex/core/agents/researcher.py`
-- `src/graph_cortex/core/agents/summarizer.py`
+- `src/graph_cortex/core/agents/librarian.py`
 
 ---
 
@@ -3220,35 +3218,29 @@ The upgrade to `bge-base-en-v1.5` with Apple Silicon MPS acceleration ensures th
 
 These files form the **Orchestration Layer** (Phase 3). They replace the single-threaded script execution with a highly decoupled, asynchronous, scalable swarm of AI Agents. 
 
-By leveraging the **Ray** distributed computing framework, we achieve three critical things:
-1. **Hardware Decoupling:** The heavy LLM inference logic (`llm_router.py`) sits on its own compute deployment. It can scale across multiple GPUs without freezing the Neo4j queries.
-2. **Concurrency:** The `ResearchAgent` answers the user immediately, while the `SummaryAgent` runs in the background analyzing the turn and updating the Graph Database silently.
-3. **Provider Agnosticism:** The Agents do not know what an "API Key" or "Gemini" is. They just fire generic async requests at the Ray Serve endpoint.
+By moving to a direct **LLMClient** (Google GenAI SDK), we achieve three critical things:
+1. **Startup Speed:** The system boots in seconds, not minutes. We no longer wait for a local Ray cluster to stabilize.
+2. **Simplified Concurrency:** Agents use Python's native `asyncio` for non-blocking operations. The `ResearchAgent` can search the graph while the `Librarian` optimizes it in parallel.
+3. **Robustness:** There is no "middle-man" infrastructure. If your API key is valid and you have internet access, the Swarm works.
 
 ---
 
 ## Full Code with Line-by-Line Explanation
 
-### 1. The LLM Router (`llm_router.py`)
+### 1. The Direct LLM Client (`llm_client.py`)
+
+The `LLMClient` uses the official Google GenAI SDK to handle all Swarm communications.
 
 ```python
-from ray import serve
 from google import genai
 from graph_cortex.config.llm import GEMINI_API_KEY, LLM_MODEL
 
-@serve.deployment(num_replicas=1, ray_actor_options={"num_cpus": 1})
-class LLMEngineDeployment:
+class LLMClient:
     def __init__(self):
         self.client = genai.Client(api_key=GEMINI_API_KEY)
         self.model = LLM_MODEL
 ```
-`@serve.deployment`: This Python decorator is pure magic. It tells the Ray Cluster to spin up instances of this class on dedicated hardware worker nodes. If we set `num_replicas=5`, Ray would auto-balance traffic perfectly across 5 copies.
-
-```python
-    async def __call__(self, request: dict) -> dict:
-        system_prompt = request.get("system_prompt", "")
-        user_input = request.get("user_input", "")
-        context = request.get("context", "")
+The client is instantiated once at system boot. This ensures that every agent in the swarm shares a single connection pool, reducing API overhead.
         
         # ... prompt building logic ...
         

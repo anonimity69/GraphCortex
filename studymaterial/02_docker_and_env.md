@@ -7,11 +7,7 @@
 
 ---
 
-## docker-compose.yml — Line by Line
-
-```yaml
-version: '3.8'
-```
+---
 **What it does:** Declares the Docker Compose file format version. Version 3.8 is the most widely supported modern format.
 
 ```yaml
@@ -30,13 +26,14 @@ services:
 **What it does:** Gives the container a human-readable name instead of a random hash. Makes `docker logs neo4j_nsdmg` and `docker exec neo4j_nsdmg` much easier.
 
 ```yaml
+```yaml
     ports:
-      - "7474:7474" # HTTP port for Neo4j Browser
-      - "7687:7687" # Bolt port
+      - "7475:7474" # HTTP port for Neo4j Browser
+      - "7688:7687" # Bolt port
 ```
 **What it does:** Maps container ports to your local machine.
-- **7474** → Neo4j Browser (the web UI at `http://localhost:7474` where you can visualise the graph)
-- **7687** → Bolt protocol (the binary protocol that the Python `neo4j` driver uses to communicate with the database)
+- **7475** → Neo4j Browser (the web UI at `http://localhost:7475`)
+- **7688** → Bolt protocol (used by the Python driver)
 
 ```yaml
     environment:
@@ -70,9 +67,9 @@ services:
 ```yaml
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
+      interval: 5s
+      timeout: 5s
+      retries: 10
 ```
 **What it does:** Docker periodically checks if Neo4j is healthy by hitting the HTTP endpoint. If it fails 5 times in a row, Docker marks the container as unhealthy. This is useful for orchestration tools (Kubernetes, etc.) that need to know if the service is genuinely ready.
 
@@ -81,7 +78,7 @@ services:
 ## .env — The Connection Credentials
 
 ```env
-NEO4J_URI=neo4j://127.0.0.1:7687
+NEO4J_URI=bolt://127.0.0.1:7688
 NEO4J_USERNAME=neo4j
 NEO4J_PASSWORD=cortex_secure_graph_99!
 ```
@@ -90,7 +87,7 @@ NEO4J_PASSWORD=cortex_secure_graph_99!
 
 | Variable | Value | Explanation |
 |---|---|---|
-| `NEO4J_URI` | `neo4j://127.0.0.1:7687` | The connection URI. `neo4j://` is the routing protocol (supports clustering). `bolt://` is the direct protocol. Both work for single-instance setups. We use `neo4j://` because Neo4j Desktop defaults to it. |
+| `NEO4J_URI` | `bolt://127.0.0.1:7688` | The connection URI. We use `7688` on the host to avoid conflict with local Neo4j Desktop (7687). |
 | `NEO4J_USERNAME` | `neo4j` | The default admin username. Neo4j always creates this user on first boot. |
 | `NEO4J_PASSWORD` | `cortex_secure_graph_99!` | The password you set when creating the database. |
 

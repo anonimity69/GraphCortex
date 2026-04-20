@@ -24,8 +24,8 @@ When you run `python src/graph_cortex/interfaces/cli/main.py`, the system execut
 ### 1. Zero-Noise Logging
 The system suppresses standard Ray and uvicorn logs, redirecting all architectural events to `Logs/admin_system.log`. This ensures the CLI remains a clean, distraction-free playground.
 
-### 2. Ray Serve & LLM Routing
-The CLI initializes a local **Ray cluster** and deploys the `LLMEngineDeployment`. This allows all agents in the swarm to communicate with the central Gemini 2.0 router asynchronously.
+### 2. Direct LLM Client
+The CLI initializes a direct **LLMClient** that connects the agents to the Google GenAI SDK. This removes the overhead of a distributed Ray cluster, drastically reducing startup time and making the system more robust for local development.
 
 ### 3. Librarian Weight Loading
 During initialization, the Librarian Agent scans the root directory for `librarian_policy_weights.pt`. If found, it automatically loads its trained neural network state, transitioning from random heuristics to active, learned intelligence.
