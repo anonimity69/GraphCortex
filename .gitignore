@@ -3,8 +3,9 @@
 .AppleDouble
 .LSOverride
 
-# Documentation - Un-ignored to track the project study guide
-# studymaterial/ removed from ignore list
+# Documentation
+studymaterial/
+
 # Distribution / packaging
 .Python
 build/
