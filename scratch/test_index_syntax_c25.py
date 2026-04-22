@@ -6,7 +6,6 @@ load_dotenv()
 
 uri = os.getenv("NEO4J_URI", "neo4j://127.0.0.1:7688")
 username = os.getenv("NEO4J_USERNAME", "neo4j")
-password = os.getenv("NEO4J_PASSWORD", "cortex_secure_graph_99!")
 
 driver = GraphDatabase.driver(uri, auth=(username, password))
 

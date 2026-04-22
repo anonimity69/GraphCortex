@@ -1,4 +1,5 @@
 import pytest
+import math
 from graph_cortex.core.retrieval.inhibition import apply_lateral_inhibition
 
 def test_lateral_inhibition_base_energy():
@@ -15,15 +16,16 @@ def test_lateral_inhibition_base_energy():
     )
     assert len(results) == 1
     assert results[0]["node_id"] == "1"
-    assert results[0]["activation_energy"] == 1.0
+    assert results[0]["activation_energy"] == pytest.approx(1.0)
     assert len(rejected) == 0
 
 def test_lateral_inhibition_distance_decay():
     """
     Ensures nodes exponentially lose energy over hops (distance penalty).
+    Formula: E = E0 * exp(-dist * p_d)
+    For dist=2, p_d=0.5: E = 1.0 * exp(-1) ≈ 0.3679
     """
     nodes = [{"node_id": "2", "distance": 2, "degree": 0}]
-    # energy = 1.0 * e^(-0.5 * 2) = 1.0 * e^(-1) = ~0.367
     results, rejected = apply_lateral_inhibition(
         nodes, 
         cutoff_threshold=0.2, 
@@ -32,15 +34,15 @@ def test_lateral_inhibition_distance_decay():
         degree_penalty=0.1
     )
     assert len(results) == 1
-    assert 0.36 < results[0]["activation_energy"] < 0.37
+    assert results[0]["activation_energy"] == pytest.approx(0.3679, abs=1e-3)
 
 def test_lateral_inhibition_hub_suppression():
     """
     Ensures high-degree hubs fall below threshold and are rejected.
+    Formula: E = E0 * exp(-dist * p_d) * exp(-deg * p_g)
+    For dist=1, p_d=0.5, deg=50, p_g=0.1: E = exp(-0.5) * exp(-5) = exp(-5.5) ≈ 0.0041
     """
     nodes = [{"node_id": "3", "distance": 1, "degree": 50}]
-    # energy = 1.0 * e^(-0.5 * 1) * e^(-0.1 * 50) = e^(-0.5) * e^(-5) = e^-5.5 = ~0.004
-    # Cutoff is 0.2, so it should be rejected.
     results, rejected = apply_lateral_inhibition(
         nodes, 
         cutoff_threshold=0.2, 
@@ -50,4 +52,4 @@ def test_lateral_inhibition_hub_suppression():
     )
     assert len(results) == 0
     assert len(rejected) == 1
-    assert rejected[0] == "3"
+    assert rejected[0] == "UnknownHub"

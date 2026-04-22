@@ -46,26 +46,6 @@ def execute_spreading_activation_hop(session, target_node_id, session_id, hop_de
     result = session.run(query, node_id=target_node_id, session_id=session_id)
     return [record.data() for record in result]
 
-def get_anchors_by_vector_similarity(session, vector, session_id, limit=SEMANTIC_ANCHOR_LIMIT):
-    """
-    Finds anchor nodes based on semantic vector similarity (Cosine).
-    Queries the 'entity_vector_index' initialized in schema_migrations.
-    """
-    query = """
-    CYPHER 25
-    MATCH (node:Entity)
-    SEARCH node IN (
-        VECTOR INDEX entity_vector_index 
-        FOR $vector 
-        WHERE node.session_id = $session_id AND node.is_active = true 
-        LIMIT $limit
-    ) SCORE AS score
-    WHERE score > $threshold
-    RETURN elementId(node) AS node_id, node.name AS name, labels(node)[0] AS type, score
-    ORDER BY score DESC
-    """
-    result = session.run(query, limit=limit, vector=vector, session_id=session_id, threshold=SEMANTIC_SIMILARITY_THRESHOLD)
-    return [record.data() for record in result]
 def get_subgraph_edges(session, node_ids, session_id):
     """
     Explicitly reconstructs the connections between a cluster of activated nodes.
