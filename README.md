@@ -55,13 +55,13 @@ GraphCortex is a **self-optimizing memory layer** built on Neo4j. It combines a 
 Three specialized agents run concurrently in the GraphCortex Swarm:
 
 ### Researcher Agent
-Handles every query. Uses a Spreading Activation algorithm with Lateral Inhibition to pull tight, relevant context sub-graphs—avoiding the "Hub Explosion" problem where over-connected nodes dominate every result regardless of relevance.
+Handles every query. Uses a Spreading Activation algorithm with Lateral Inhibition to pull tight, relevant context sub-graphs. It implements **Shortest-Path Edge Reconstruction** to bridge isolated anchor nodes, ensuring the LLM receives a fully connected, traversable context rather than disjointed facts.
 
 ### Summarizer Agent
 Runs asynchronously after each conversation turn. Extracts entities and relationships from new interactions and wires them into the Episodic memory timeline without blocking the main thread.
 
 ### Librarian Agent *(the core innovation)*
-Runs a continuous RL loop in the background. It observes **Graph Heat = weighted combination of node access frequency, duplication density, and edge inconsistency**—a composite signal built from node access frequency, structural centrality, and retrieval success—and applies three operations:
+Runs a continuous RL loop in the background. It observes **Graph Heat = weighted combination of node access frequency, duplication density, and edge inconsistency** and applies three operations while enforcing **Memory Immutability** (protecting core factual properties from destructive updates):
 
 - **Merge** — collapses duplicate or near-duplicate nodes into canonical representations
 - **Prune** — soft-deletes stale, low-signal, or erroneous context (including extraction noise and rate-limit artifacts)

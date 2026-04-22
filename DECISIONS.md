@@ -72,3 +72,14 @@ During deployment testing, we discovered that "API Rate Limit" and "System Error
 We implemented an asynchronous **Background Maintenance Task** in the CLI. 
 - Every 60 seconds, the Librarian Agent performs a **Sanitization Sweep**, using a Cypher-based heuristic to hunt down and soft-delete error-related nodes.
 - This ensures the Graph remains "logic-dense," providing the Research Agent with a clean sub-graph context window while preserving the graph's history via the Global Soft-Delete architecture.
+
+## 8. Memory Integrity & Structural Connectivity (The "Middle" Fix)
+
+### Solving Anchor Isolation
+During retrieval testing, we observed "Anchor Isolation," where the retrieval engine would return high-confidence nodes that were structurally disconnected within the sub-graph. This forced the LLM to hallucinate connections or fail multi-hop reasoning. We implemented **Shortest-Path Edge Reconstruction** in the Cypher retrieval pipeline. By calculating the `shortestPath` between retrieved anchors, the system automatically pulls in the "missing middle" relationships, ensuring a mathematically connected topology for the LLM context.
+
+### Enforcing Immutability
+To prevent "Destructive Updating"—where the Librarian Agent might inadvertently overwrite historical facts while trying to optimize nodes—we implemented a strict **Immutability Layer** in the RL `ActionEnv`. 
+- Actions targeting core properties (e.g., `name`, `summary`) are intercepted and stripped before reaching the database.
+- The system only allows updates to "Dynamic Metadata" (confidence scores, heat levels, access counts).
+- This ensures that while the graph's *structure* is fluid and self-optimizing, the *truth* of the stored facts remains immutable, providing a reliable foundation for long-term episodic memory.
