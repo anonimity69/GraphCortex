@@ -39,6 +39,7 @@ class SemanticMemory:
         embedding = self._get_embedding(composite_text)
             
         query = f"MERGE (e:{node_type} {{name: $name, session_id: $session_id}}) "
+        query += "ON CREATE SET e.is_active = true "
         
         set_statements = ["e.embedding = $embedding"]
         for k in attributes.keys():
@@ -76,10 +77,12 @@ class SemanticMemory:
         query = f"""
         MATCH (ev:Event {{event_id: $event_id, session_id: $session_id}})
         MERGE (e:Entity {{name: $entity_name, session_id: $session_id}})
+        ON CREATE SET e.is_active = true
         SET e.embedding = $entity_vector
         {" ".join([f"SET e.{k} = $e_prop_{i}" for i, k in enumerate((entity_props or {}).keys())])}
         
         MERGE (c:Concept {{name: $concept_name, session_id: $session_id}})
+        ON CREATE SET c.is_active = true
         SET c.embedding = $concept_vector
         {" ".join([f"SET c.{k} = $c_prop_{i}" for i, k in enumerate((concept_props or {}).keys())])}
         
