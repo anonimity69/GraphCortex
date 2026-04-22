@@ -25,23 +25,28 @@ def get_anchors_by_vector_similarity(session, vector, session_id, limit=SEMANTIC
     """
     query = """
     CYPHER 25
-    MATCH (node:Entity)
-    SEARCH node IN (
-        VECTOR INDEX entity_vector_index FOR $vector 
-        WHERE node.session_id = $session_id AND node.is_active = true
-        LIMIT $limit
-    ) SCORE AS score
-    WHERE score > $threshold
-    RETURN elementId(node) AS node_id, node.name AS name, labels(node)[0] AS type, score
-
-    UNION ALL
-
-    MATCH (node:Concept)
-    SEARCH node IN (
-        VECTOR INDEX concept_vector_index FOR $vector 
-        WHERE node.session_id = $session_id AND node.is_active = true
-        LIMIT $limit
-    ) SCORE AS score
+    CALL {
+        MATCH (e:Entity)
+        SEARCH e IN (
+            VECTOR INDEX entity_vector_index 
+            FOR $vector 
+            WHERE e.session_id = $session_id AND e.is_active = true
+            LIMIT $limit
+        ) SCORE AS score
+        RETURN e AS node, score
+        
+        UNION
+        
+        MATCH (c:Concept)
+        SEARCH c IN (
+            VECTOR INDEX concept_vector_index 
+            FOR $vector 
+            WHERE c.session_id = $session_id AND c.is_active = true
+            LIMIT $limit
+        ) SCORE AS score
+        RETURN c AS node, score
+    }
+    WITH node, score
     WHERE score > $threshold
     RETURN elementId(node) AS node_id, node.name AS name, labels(node)[0] AS type, score
     ORDER BY score DESC
