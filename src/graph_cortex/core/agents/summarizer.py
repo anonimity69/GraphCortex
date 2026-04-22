@@ -17,9 +17,17 @@ class SummaryAgent(BaseAgent):
             "{\n"
             '  "summary": "Short 1 sentence description of the interaction",\n'
             '  "entities": [\n'
-            '    {"entity": "Name1", "concept": "Category1", "relation": "RELATES_TO"}\n'
+            '    {\n'
+            '      "entity": "Name1", \n'
+            '      "concept": "Category1", \n'
+            '      "relation": "RELATES_TO",\n'
+            '      "properties": {"key": "literal_value"}\n'
+            '    }\n'
             "  ]\n"
-            "}\n"
+            "}\n\n"
+            "CRITICAL: Do NOT just categorize. If the text mentions specific attributes, codes, or purposes "
+            "(e.g., 'Tango-Delta-Niner' has purpose 'override protocol'), you MUST include them in the 'properties' field. "
+            "Preserve literal string values.\n"
             "Do not include markdown blocks like ```json."
         )
         super().__init__(name="Summarizer", system_prompt=struct_prompt)

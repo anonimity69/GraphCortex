@@ -97,9 +97,16 @@ class RetrievalEngine:
                 if n_id not in unique_network_dict or node["activation_energy"] > unique_network_dict[n_id]["activation_energy"]:
                     unique_network_dict[n_id] = node
 
+            # Step 4: Sub-Graph Edge Reconstruction
+            # We explicitly fetch relationships between the final set of nodes.
+            node_ids = list(unique_network_dict.keys())
+            from graph_cortex.infrastructure.db.queries.retrieval_queries import get_subgraph_edges
+            reconstructed_edges = get_subgraph_edges(session, node_ids)
+
             return {
                 "status": "Hit", 
                 "anchors": [a["name"] for a in anchors],
                 "network": list(unique_network_dict.values()),
+                "edges": reconstructed_edges,
                 "inhibited_hubs": list(set(dropped))
             }

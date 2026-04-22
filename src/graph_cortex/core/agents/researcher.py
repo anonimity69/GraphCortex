@@ -26,12 +26,21 @@ class ResearchAgent(BaseAgent):
         context_string = ""
         if retrieval_results["status"] == "Hit":
             nodes = retrieval_results["network"]
-            context_string = "Retrieved Knowledge Graph Nodes:\n"
+            context_string = "Retrieved Knowledge Graph Context:\n"
+            
+            # First, list unique nodes
+            context_string += "### Entities & Concepts:\n"
             for node in nodes:
-                # distance, type, name
                 context_string += f"- ({node['type']}) {node['name']} [Distance: {node['distance']}]\n"
+            
+            # Second, list connecting relationships (Reconstructed Sub-graph)
+            context_string += "\n### Fact Relationships (Edges):\n"
+            edges = retrieval_results.get("edges", [])
+            for edge in edges:
+                rel_str = f"({edge['source_name']}) -[{edge['rel_type']}]-> ({edge['target_name']})"
+                context_string += f"- {rel_str}\n"
                 
-            logging.info(f"[{self.name}] Found {len(nodes)} connected context nodes.")
+            logging.info(f"[{self.name}] Found {len(nodes)} nodes and {len(edges)} edges.")
         else:
             logging.info(f"[{self.name}] No relevant context found. Proceeding with zero-shot.")
             

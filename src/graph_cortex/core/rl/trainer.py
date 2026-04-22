@@ -78,7 +78,12 @@ class RLPyTorchTrainer:
             ground_truth = sample['answer']
             agent_answer = f"The knowledge graph returns: {ground_truth}" # Bypassing Researcher agent for raw training speed
             
-            score = self.judge.evaluate_answer(sample['question'], ground_truth, agent_answer)
+            curation_logs = (
+                f"Action: {info.get('action_taken')} | "
+                f"Status: {info.get('status')} | "
+                f"Violation: {info.get('action_violation', 'None')}"
+            )
+            score = self.judge.evaluate_answer(sample['question'], ground_truth, agent_answer, curation_logs=curation_logs)
             print(f"[Reward Judge] Accuracy Score: {score}")
             
             # 5. REINFORCE Backpropagation

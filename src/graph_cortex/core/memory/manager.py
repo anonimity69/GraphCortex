@@ -29,13 +29,18 @@ class MemoryManager:
         
         # Extract into Semantic Memory layer
         for item in extracted_entities:
-            self.semantic.add_entity(item["entity"])
+            # We don't have separate entity/concept props from the summarizer yet,
+            # so we apply the extracted properties to the primary entity.
+            props = item.get("properties", {})
+            self.semantic.add_entity(item["entity"], attributes=props)
             self.semantic.add_entity(item["concept"])
+            
             self.semantic.extract_from_event(
                 event_id=event_id,
                 entity_name=item["entity"],
                 concept_name=item["concept"],
-                relationship_type=item.get("relation", "RELATED_TO")
+                relationship_type=item.get("relation", "RELATED_TO"),
+                entity_props=props
             )
             
         return event_id

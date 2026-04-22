@@ -46,6 +46,9 @@ class GraphMemoryEnv(gym.Env):
         done = True  # We do Single-Step episodes for now
         info = {"action_taken": action}
         
+        # Core architectural constraints: facts are immutable.
+        IMMUTABLE_PROPERTIES = ["name", "summary", "content", "purpose", "event_id", "message_id"]
+        
         try:
             if action == 0:  # NOOP
                 info["status"] = "skipping"
@@ -56,10 +59,21 @@ class GraphMemoryEnv(gym.Env):
                 info["status"] = f"added_{label}_{name}"
             elif action == 2:  # UPDATE
                 node_id = action_kwargs.get("node_id")
-                props = action_kwargs.get("properties", {})
+                raw_props = action_kwargs.get("properties", {})
+                
+                # Filter out illegal property updates to enforce immutability
+                filtered_props = {k: v for k, v in raw_props.items() if k not in IMMUTABLE_PROPERTIES}
+                violated_keys = [k for k in raw_props.keys() if k in IMMUTABLE_PROPERTIES]
+                
+                if violated_keys:
+                    info["action_violation"] = f"Attempted to modify IMMUTABLE_PROPERTIES: {violated_keys}"
+                
                 if node_id:
-                    self.curation.update_node(node_id=node_id, properties=props)
-                    info["status"] = f"updated_{node_id}"
+                    if filtered_props:
+                        self.curation.update_node(node_id=node_id, properties=filtered_props)
+                        info["status"] = f"updated_{node_id}"
+                    else:
+                        info["status"] = "skipping_empty_safe_update"
                 else:
                     info["status"] = "error_missing_node_id"
             elif action == 3:  # SOFT-DELETE

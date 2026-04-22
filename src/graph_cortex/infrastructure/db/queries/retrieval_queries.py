@@ -30,14 +30,16 @@ def execute_spreading_activation_hop(session, target_node_id, hop_depth):
     WHERE elementId(start) = $node_id
       AND coalesce(connected.is_active, true) = true
       AND ALL(node IN nodes(path) WHERE coalesce(node.is_active, true) = true)
-    WITH start, connected, REDUCE(s = 0, n IN nodes(path) | s + 1) AS distance,
+    WITH start, connected, length(path) AS distance,
+         relationships(path) AS rels,
          COUNT {{ (connected)--() }} AS degree
     RETURN 
         elementId(connected) AS node_id, 
         connected.name AS name, 
         labels(connected)[0] AS type,
         distance,
-        degree
+        degree,
+        [r in rels | {{type: type(r), start_name: startNode(r).name, end_name: endNode(r).name}}] AS path_rels
     ORDER BY distance ASC
     """
     result = session.run(query, node_id=target_node_id)
@@ -57,4 +59,28 @@ def get_anchors_by_vector_similarity(session, vector, limit=SEMANTIC_ANCHOR_LIMI
     ORDER BY score DESC
     """
     result = session.run(query, limit=limit, vector=vector, threshold=SEMANTIC_SIMILARITY_THRESHOLD)
+    return [record.data() for record in result]
+def get_subgraph_edges(session, node_ids):
+    """
+    Explicitly reconstructs the connections between a cluster of activated nodes.
+    Uses shortestPath to ensure connecting 'middle' nodes are captured even if 
+    their individual activation energy was below the threshold.
+    """
+    if not node_ids:
+        return []
+        
+    query = """
+    MATCH (n), (m)
+    WHERE elementId(n) IN $node_ids AND elementId(m) IN $node_ids AND elementId(n) < elementId(m)
+    MATCH p = shortestPath((n)-[*1..3]-(m))
+    UNWIND relationships(p) AS r
+    WITH DISTINCT r
+    RETURN 
+        elementId(startNode(r)) AS source_id, 
+        startNode(r).name AS source_name, 
+        type(r) AS rel_type, 
+        elementId(endNode(r)) AS target_id, 
+        endNode(r).name AS target_name
+    """
+    result = session.run(query, node_ids=node_ids)
     return [record.data() for record in result]

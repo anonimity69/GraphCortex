@@ -37,10 +37,26 @@ class MemoryCuration:
         """
         Soft-deletes (or restores) a node by flagging its is_active property.
         Inactive nodes act as dead-ends for the Spreading Activation retrieval engine.
+        
+        If an Event node is soft-deleted, we bridge its FOLLOWS relationships
+        to maintain chronological traversability.
         """
         query = """
         MATCH (n) WHERE elementId(n) = $node_id
         SET n.is_active = $status
+        
+        WITH n
+        WHERE $status = false // Only bridge if we are deactivating
+        
+        // Find immediate predecessors and successors in the chronological chain
+        OPTIONAL MATCH (prev)-[r1:FOLLOWS]->(n)
+        OPTIONAL MATCH (n)-[r2:FOLLOWS]->(next)
+        
+        // Logical Bridge: connect predecessors to successors
+        FOREACH (_ IN CASE WHEN prev IS NOT NULL AND next IS NOT NULL THEN [1] ELSE [] END |
+            MERGE (prev)-[:FOLLOWS]->(next)
+        )
+        
         RETURN n.name AS name, labels(n)[0] AS type, n.is_active AS is_active
         """
         with get_session() as session:
