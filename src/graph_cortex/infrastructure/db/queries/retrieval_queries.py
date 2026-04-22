@@ -8,12 +8,46 @@ def get_anchors_by_fulltext(session, search_string, session_id, limit=LEXICAL_AN
     query = """
     CALL db.index.fulltext.queryNodes("hybrid_entity_concept", $search_string)
     YIELD node, score
-    WHERE coalesce(node.is_active, true) = true AND node.session_id = $session_id
+    WHERE node.is_active = true AND node.session_id = $session_id
     RETURN elementId(node) AS node_id, node.name AS name, labels(node)[0] AS type, score
     ORDER BY score DESC
     LIMIT $limit
     """
     result = session.run(query, search_string=search_string, session_id=session_id, limit=limit)
+    return [record.data() for record in result]
+
+
+def get_anchors_by_vector_similarity(session, vector, session_id, limit=SEMANTIC_ANCHOR_LIMIT):
+    """
+    Finds anchor nodes based on semantic vector similarity (Cosine).
+    Queries both 'entity_vector_index' and 'concept_vector_index' and merges results.
+    Strict boolean logic used for node.is_active to comply with Cypher 25 SEARCH constraints.
+    """
+    query = """
+    CYPHER 25
+    MATCH (node:Entity)
+    SEARCH node IN (
+        VECTOR INDEX entity_vector_index FOR $vector 
+        WHERE node.session_id = $session_id AND node.is_active = true
+        LIMIT $limit
+    ) SCORE AS score
+    WHERE score > $threshold
+    RETURN elementId(node) AS node_id, node.name AS name, labels(node)[0] AS type, score
+
+    UNION ALL
+
+    MATCH (node:Concept)
+    SEARCH node IN (
+        VECTOR INDEX concept_vector_index FOR $vector 
+        WHERE node.session_id = $session_id AND node.is_active = true
+        LIMIT $limit
+    ) SCORE AS score
+    WHERE score > $threshold
+    RETURN elementId(node) AS node_id, node.name AS name, labels(node)[0] AS type, score
+    ORDER BY score DESC
+    LIMIT $limit
+    """
+    result = session.run(query, limit=limit, vector=vector, session_id=session_id, threshold=SEMANTIC_SIMILARITY_THRESHOLD)
     return [record.data() for record in result]
 
 
@@ -29,8 +63,8 @@ def execute_spreading_activation_hop(session, target_node_id, session_id, hop_de
     MATCH path = (start)-[*1..{depth}]-(connected)
     WHERE elementId(start) = $node_id
       AND connected.session_id = $session_id
-      AND coalesce(connected.is_active, true) = true
-      AND ALL(node IN nodes(path) WHERE node.session_id = $session_id AND coalesce(node.is_active, true) = true)
+      AND connected.is_active = true
+      AND ALL(node IN nodes(path) WHERE node.session_id = $session_id AND node.is_active = true)
     WITH start, connected, length(path) AS distance,
          relationships(path) AS rels,
          COUNT {{ (connected)--() }} AS degree
