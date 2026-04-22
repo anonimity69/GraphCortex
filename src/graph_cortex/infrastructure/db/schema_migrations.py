@@ -36,8 +36,8 @@ def initialize_schema():
     vector_queries = [
         "DROP INDEX entity_vector_index IF EXISTS",
         "DROP INDEX concept_vector_index IF EXISTS",
-        f"CREATE VECTOR INDEX entity_vector_index IF NOT EXISTS FOR (e:Entity) ON (e.embedding) OPTIONS {{indexConfig: {{`vector.dimensions`: {dim}, `vector.similarity_function`: 'cosine'}}}}",
-        f"CREATE VECTOR INDEX concept_vector_index IF NOT EXISTS FOR (c:Concept) ON (c.embedding) OPTIONS {{indexConfig: {{`vector.dimensions`: {dim}, `vector.similarity_function`: 'cosine'}}}}"
+        f"CYPHER 25 CREATE VECTOR INDEX entity_vector_index FOR (e:Entity) ON (e.embedding) WITH [e.session_id, e.is_active] OPTIONS {{indexConfig: {{`vector.dimensions`: {dim}, `vector.similarity_function`: 'cosine'}}}}",
+        f"CYPHER 25 CREATE VECTOR INDEX concept_vector_index FOR (c:Concept) ON (c.embedding) WITH [c.session_id, c.is_active] OPTIONS {{indexConfig: {{`vector.dimensions`: {dim}, `vector.similarity_function`: 'cosine'}}}}"
     ]
     
     try:

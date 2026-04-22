@@ -52,11 +52,15 @@ def get_anchors_by_vector_similarity(session, vector, session_id, limit=SEMANTIC
     Queries the 'entity_vector_index' initialized in schema_migrations.
     """
     query = """
-    CALL db.index.vector.queryNodes('entity_vector_index', $limit, $vector)
-    YIELD node, score
+    CYPHER 25
+    MATCH (node:Entity)
+    SEARCH node IN (
+        VECTOR INDEX entity_vector_index 
+        FOR $vector 
+        WHERE node.session_id = $session_id AND node.is_active = true 
+        LIMIT $limit
+    ) SCORE AS score
     WHERE score > $threshold
-      AND coalesce(node.is_active, true) = true
-      AND node.session_id = $session_id
     RETURN elementId(node) AS node_id, node.name AS name, labels(node)[0] AS type, score
     ORDER BY score DESC
     """

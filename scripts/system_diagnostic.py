@@ -73,13 +73,14 @@ async def main_diagnostic():
     console.print("  [green]✔[/] Schema initialized.")
     
     console.print("[dim]- Validating Soft Deletion / Spreading Activation interaction...[/]")
+    session_id = "diagnostic_session"
     with get_session() as session:
-        # Create Dummy
-        session.run("MERGE (c:Concept {name: 'MockTarget'}) SET c.is_active = true")
-        session.run("MATCH (c:Concept) WHERE c.name = 'MockTarget' SET c.is_active = false")
+        # Create Dummy scoped to session
+        session.run("MERGE (c:Concept {name: 'MockTarget', session_id: $session_id}) SET c.is_active = true", session_id=session_id)
+        session.run("MATCH (c:Concept {name: 'MockTarget', session_id: $session_id}) SET c.is_active = false", session_id=session_id)
     
     engine = RetrievalEngine()
-    results = engine.retrieve(["MockTarget"])
+    results = engine.retrieve(["MockTarget"], session_id=session_id)
     # Should miss retrieving MockTarget
     found_target = False
     if results.get("network"):
@@ -95,7 +96,7 @@ async def main_diagnostic():
         
     console.print("[dim]- Testing Vector MPS Semantic Fallback...[/]")
     # Search for an untethered concept - triggers embedding fallback silently
-    engine.retrieve(["A random string that definitely triggers embedding MPS usage on mac"])
+    engine.retrieve(["A random string that definitely triggers embedding MPS usage on mac"], session_id=session_id)
     console.print("  [green]✔[/] Vector retrieval fallback generated tensors locally without crashing.")
 
 
@@ -126,9 +127,9 @@ async def main_diagnostic():
     researcher = ResearchAgent()
     summarizer = SummaryAgent()
     
-    console.print("[dim]- Triggering Dual-Agent Collision Collision Test (Concurrent Ray Hits)...[/]")
+    console.print("[dim]- Triggering Dual-Agent Collision Test (Concurrent Ray Hits)...[/]")
     t1 = time.time()
-    task1 = researcher.process_query("What is graph logic?")
+    task1 = researcher.process_query("What is graph logic?", session_id=session_id)
     task2 = summarizer.extract_and_consolidate("What is graph logic?", "Graph logic connects nodes.")
     
     # Await them simultaneously!

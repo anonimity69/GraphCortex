@@ -1,6 +1,6 @@
 services:
   neo4j:
-    image: neo4j:5.18.1
+    image: neo4j:2026.02
     container_name: neo4j_nsdmg
     ports:
       - "7475:7474" # HTTP port for Neo4j Browser
