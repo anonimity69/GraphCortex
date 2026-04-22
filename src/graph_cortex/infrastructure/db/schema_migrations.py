@@ -10,14 +10,18 @@ def initialize_schema():
         # Working Memory Constraints
         "CREATE INDEX IF NOT EXISTS FOR (i:Interaction) ON (i.timestamp)",
         "CREATE INDEX IF NOT EXISTS FOR (m:Message) ON (m.message_id)",
+        "CREATE INDEX IF NOT EXISTS FOR (m:Message) ON (m.session_id)",
         
         # Episodic Memory Constraints
         "CREATE CONSTRAINT IF NOT EXISTS FOR (e:Event) REQUIRE e.event_id IS UNIQUE",
         "CREATE INDEX IF NOT EXISTS FOR (e:Event) ON (e.timestamp)",
+        "CREATE INDEX IF NOT EXISTS FOR (e:Event) ON (e.session_id)",
         
-        # Semantic Memory Constraints
-        "CREATE CONSTRAINT IF NOT EXISTS FOR (e:Entity) REQUIRE e.name IS UNIQUE",
-        "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Concept) REQUIRE c.name IS UNIQUE",
+        # Semantic Memory Constraints (Composite uniqueness for namespacing)
+        "CREATE CONSTRAINT IF NOT EXISTS FOR (e:Entity) REQUIRE (e.name, e.session_id) IS UNIQUE",
+        "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Concept) REQUIRE (c.name, c.session_id) IS UNIQUE",
+        "CREATE INDEX IF NOT EXISTS FOR (e:Entity) ON (e.session_id)",
+        "CREATE INDEX IF NOT EXISTS FOR (c:Concept) ON (c.session_id)",
         
         # Fulltext Lexical Search (Hybrid Engine)
         "CREATE FULLTEXT INDEX hybrid_entity_concept IF NOT EXISTS FOR (n:Entity|Concept) ON EACH [n.name]",
@@ -38,6 +42,14 @@ def initialize_schema():
     
     try:
         with get_session() as session:
+            # 0. Drop legacy constraints if they exist (searching by property signature)
+            constraints = session.run("SHOW CONSTRAINTS YIELD name, labelsOrTypes, properties, type").data()
+            for c in constraints:
+                # If it's a uniqueness constraint on just 'name', it's legacy
+                if c['type'] == 'UNIQUENESS' and c['properties'] == ['name'] and c['labelsOrTypes'] in [['Entity'], ['Concept']]:
+                    session.run(f"DROP CONSTRAINT {c['name']}")
+                    logging.info(f"Dropped legacy constraint: {c['name']}")
+
             # 1. Base Constraints
             for query in base_queries:
                 session.run(query)

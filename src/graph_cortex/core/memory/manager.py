@@ -32,11 +32,12 @@ class MemoryManager:
             # We don't have separate entity/concept props from the summarizer yet,
             # so we apply the extracted properties to the primary entity.
             props = item.get("properties", {})
-            self.semantic.add_entity(item["entity"], attributes=props)
-            self.semantic.add_entity(item["concept"])
+            self.semantic.add_entity(item["entity"], session_id=session_id, attributes=props)
+            self.semantic.add_entity(item["concept"], session_id=session_id)
             
             self.semantic.extract_from_event(
                 event_id=event_id,
+                session_id=session_id,
                 entity_name=item["entity"],
                 concept_name=item["concept"],
                 relationship_type=item.get("relation", "RELATED_TO"),

@@ -29,7 +29,7 @@ class SemanticMemory:
         """Returns a vector embedding using the centrally configured model."""
         return encode_embedding(text)
 
-    def add_entity(self, name: str, node_type: str = "Entity", attributes: Dict = None):
+    def add_entity(self, name: str, session_id: str, node_type: str = "Entity", attributes: Dict = None):
         """Creates or updates a general semantic entity, embedding it as a vector."""
         if attributes is None:
             attributes = {}
@@ -38,7 +38,7 @@ class SemanticMemory:
         composite_text = self._create_composite_text(name, node_type, attributes)
         embedding = self._get_embedding(composite_text)
             
-        query = f"MERGE (e:{node_type} {{name: $name}}) "
+        query = f"MERGE (e:{node_type} {{name: $name, session_id: $session_id}}) "
         
         set_statements = ["e.embedding = $embedding"]
         for k in attributes.keys():
@@ -48,11 +48,12 @@ class SemanticMemory:
         query += "RETURN e.name AS name"
         
         with get_session() as session:
-            session.run(query, name=name, embedding=embedding, **attributes)
+            session.run(query, name=name, session_id=session_id, embedding=embedding, **attributes)
         return name
 
     def extract_from_event(self, 
                            event_id: str, 
+                           session_id: str,
                            entity_name: str, 
                            concept_name: str, 
                            relationship_type: str = DEFAULT_RELATIONSHIP_TYPE,
@@ -73,12 +74,12 @@ class SemanticMemory:
         concept_vector = self._get_embedding(c_text)
         
         query = f"""
-        MATCH (ev:Event {{event_id: $event_id}})
-        MERGE (e:Entity {{name: $entity_name}})
+        MATCH (ev:Event {{event_id: $event_id, session_id: $session_id}})
+        MERGE (e:Entity {{name: $entity_name, session_id: $session_id}})
         SET e.embedding = $entity_vector
         {" ".join([f"SET e.{k} = $e_prop_{i}" for i, k in enumerate((entity_props or {}).keys())])}
         
-        MERGE (c:Concept {{name: $concept_name}})
+        MERGE (c:Concept {{name: $concept_name, session_id: $session_id}})
         SET c.embedding = $concept_vector
         {" ".join([f"SET c.{k} = $c_prop_{i}" for i, k in enumerate((concept_props or {}).keys())])}
         
@@ -90,6 +91,7 @@ class SemanticMemory:
         # Build parameters dictionary
         params = {
             "event_id": event_id,
+            "session_id": session_id,
             "entity_name": entity_name,
             "concept_name": concept_name,
             "entity_vector": entity_vector,

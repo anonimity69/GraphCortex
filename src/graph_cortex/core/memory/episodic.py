@@ -19,12 +19,13 @@ class EpisodicMemory:
         query = """
         MATCH (i:Interaction {session_id: $session_id})
         
-        // Find the most recent event to link via a chronological chain.
-        OPTIONAL MATCH (latest:Event)
+        // Find the most recent event in the SAME session to link via a chronological chain.
+        OPTIONAL MATCH (latest:Event {session_id: $session_id})
         WHERE NOT (latest)-[:FOLLOWS]->()
         
         CREATE (e:Event {
             event_id: $event_id,
+            session_id: $session_id,
             summary: $summary,
             timestamp: $timestamp
         })

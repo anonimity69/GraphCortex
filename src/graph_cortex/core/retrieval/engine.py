@@ -19,7 +19,7 @@ class RetrievalEngine:
         self.max_depth = max_depth
         self.logger = get_retrieval_logger()
 
-    def retrieve(self, query_terms: list):
+    def retrieve(self, query_terms: list, session_id: str):
         """
         Executes Dual-Trigger Spreading Activation.
         1. Hybrid Anchor Search (Parallel BM25 Fulltext + Semantic Vector Match)
@@ -39,12 +39,12 @@ class RetrievalEngine:
             if bm25_safe_query:
                 # Imports inside retrieve to avoid circular dependencies if any
                 from graph_cortex.infrastructure.db.queries.retrieval_queries import get_anchors_by_fulltext, get_anchors_by_vector_similarity
-                bm25_anchors = get_anchors_by_fulltext(session, bm25_safe_query)
+                bm25_anchors = get_anchors_by_fulltext(session, bm25_safe_query, session_id=session_id)
             
             # 1B: Dense Vector Semantic Search
             from graph_cortex.infrastructure.db.queries.retrieval_queries import get_anchors_by_vector_similarity
             vector = encode_embedding(search_query)
-            semantic_anchors = get_anchors_by_vector_similarity(session, vector)
+            semantic_anchors = get_anchors_by_vector_similarity(session, vector, session_id=session_id)
             
             # Combine and deduplicate anchors by node_id
             unique_anchors = {}
@@ -76,7 +76,7 @@ class RetrievalEngine:
                 })
                 
                 # Traverse outwards (Fan out) up to depth limit
-                traversed = execute_spreading_activation_hop(session, anchor["node_id"], self.max_depth)
+                traversed = execute_spreading_activation_hop(session, anchor["node_id"], session_id=session_id, hop_depth=self.max_depth)
                 
                 # Step 3: Apply Lateral Inhibition (Energy Decay)
                 filtered, hubs = apply_lateral_inhibition(
@@ -101,7 +101,7 @@ class RetrievalEngine:
             # We explicitly fetch relationships between the final set of nodes.
             node_ids = list(unique_network_dict.keys())
             from graph_cortex.infrastructure.db.queries.retrieval_queries import get_subgraph_edges
-            reconstructed_edges = get_subgraph_edges(session, node_ids)
+            reconstructed_edges = get_subgraph_edges(session, node_ids, session_id=session_id)
 
             return {
                 "status": "Hit", 

@@ -51,20 +51,20 @@ BANNER = """
 [dim italic #6B7280]                        for AI agents[/]
 """
 
-async def background_librarian_task(librarian_agent: LibrarianAgent):
+async def background_librarian_task(librarian_agent: LibrarianAgent, session_id: str):
     """
     Periodic background loop that triggers the Librarian to curate the graph.
     """
-    logging.info("[Background] Librarian automation started.")
+    logging.info(f"[Background] Librarian automation started for session {session_id}.")
     while True:
         try:
             # Wake up every 60 seconds
             await asyncio.sleep(60)
-            logging.info("[Background] Librarian waking up for periodic curation...")
+            logging.info(f"[Background] Librarian waking up for periodic curation in session {session_id}...")
             
             # Use current system heat as 'state' context for the policy
             context = "Self-maintenance cycle: Periodic graph optimization."
-            librarian_agent.curate(context)
+            librarian_agent.curate(context, session_id=session_id)
             
         except asyncio.CancelledError:
             logging.info("[Background] Librarian automation stopping...")
@@ -99,7 +99,7 @@ async def run_repl():
     pending_tasks = set()
     
     # Start the automated Librarian loop
-    librarian_task = asyncio.create_task(background_librarian_task(librarian))
+    librarian_task = asyncio.create_task(background_librarian_task(librarian, session_id))
     # librarian_task is NOT in pending_tasks because it's infinite.
     
     while True:
@@ -117,10 +117,17 @@ async def run_repl():
             if user_input.startswith("/"):
                 cmd = user_input.split()[0].lower()
                 if cmd == "/clear":
+                    # Cancel previous librarian task if it exists
+                    if 'librarian_task' in locals():
+                        librarian_task.cancel()
+                        
                     session_id = f"session_{uuid.uuid4().hex[:8]}"
                     manager.working.add_interaction(session_id)
                     console.print(f"[bold yellow]Working Memory flushed. New Session ID:[/] {session_id}")
                     logging.info(f"User commanded /clear. New Session: {session_id}")
+                    
+                    # Restart librarian for new session
+                    librarian_task = asyncio.create_task(background_librarian_task(librarian, session_id))
                 elif cmd == "/history":
                     console.print(f"[bold cyan]Current Active Session:[/] {session_id}")
                     logging.info("User requested /history.")
@@ -144,7 +151,7 @@ async def run_repl():
                 elif cmd == "/curate":
                     console.print("[bold yellow]Librarian Agent analyzing Graph topology...[/]")
                     context = f"Session {session_id} active. Continuous reasoning required."
-                    curation_info = librarian.curate(context)
+                    curation_info = librarian.curate(context, session_id=session_id)
                     console.print(f"[bold green]Success:[/] Librarian took action: [bold cyan]{curation_info['status']}[/]")
                 elif cmd == "/data":
                     # DB Dashboard
@@ -193,7 +200,7 @@ async def run_repl():
             logging.info(f"[Query] {user_input}")
             
             with console.status("[bold #7F77DD]Researcher Agent querying Graph Topology...[/]"):
-                research_result = await researcher.process_query(user_input)
+                research_result = await researcher.process_query(user_input, session_id=session_id)
                 agent_response = research_result["answer"]
             
             console.print(f"[bold #22C55E]Agent:[/] ", end="")

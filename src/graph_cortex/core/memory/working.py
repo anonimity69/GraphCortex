@@ -34,6 +34,7 @@ class WorkingMemory:
         
         CREATE (m:Message {
             message_id: $message_id, 
+            session_id: $session_id,
             role: $role, 
             content: $content, 
             timestamp: $timestamp

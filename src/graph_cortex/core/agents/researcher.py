@@ -12,16 +12,16 @@ class ResearchAgent(BaseAgent):
         super().__init__(name="Researcher", system_prompt=DEFAULT_RESEARCHER_PROMPT)
         self.retrieval_engine = RetrievalEngine()
         
-    async def process_query(self, user_query: str) -> dict:
+    async def process_query(self, user_query: str, session_id: str) -> dict:
         """
         1. Retrieve memory context (Lexical + Semantic)
         2. Format Context
         3. Query LLM to formulate an answer
         """
-        logging.info(f"[{self.name}] Retrieving context for query: '{user_query}'")
+        logging.info(f"[{self.name}] Retrieving context for query: '{user_query}' in session '{session_id}'")
         
         # We pass the full query string as a single-element list to the engine
-        retrieval_results = self.retrieval_engine.retrieve([user_query])
+        retrieval_results = self.retrieval_engine.retrieve([user_query], session_id=session_id)
         
         context_string = ""
         if retrieval_results["status"] == "Hit":

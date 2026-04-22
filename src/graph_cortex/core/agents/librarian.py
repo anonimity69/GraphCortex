@@ -46,37 +46,38 @@ class LibrarianAgent(BaseAgent):
             }
         }
 
-    def cleanup_error_nodes(self) -> int:
+    def cleanup_error_nodes(self, session_id: str) -> int:
         """
         Hard-coded heuristic to purge 'Rate limit' or 'System Error' messages from the graph.
         Returns the count of soft-deleted nodes.
         """
         query = """
         MATCH (m:Message)
-        WHERE (m.content CONTAINS 'Rate limits' OR m.content CONTAINS 'System Error')
+        WHERE m.session_id = $session_id
+        AND (m.content CONTAINS 'Rate limits' OR m.content CONTAINS 'System Error')
         AND (m.is_active IS NULL OR m.is_active = true)
         SET m.is_active = false
         RETURN count(m) as deleted_count
         """
         with get_session() as session:
-            result = session.run(query)
+            result = session.run(query, session_id=session_id)
             record = result.single()
             count = record["deleted_count"] if record else 0
             if count > 0:
                 self.stats["sanitized_nodes"] += count
-                logging.info(f"[{self.name}] Sanitized {count} error-related nodes from the memory graph.")
+                logging.info(f"[{self.name}] Sanitized {count} error-related nodes from session '{session_id}'.")
             return count
 
     def get_stats(self) -> dict:
         """Returns the internal tracking metrics."""
         return self.stats
 
-    def curate(self, state_text: str) -> dict:
+    def curate(self, state_text: str, session_id: str) -> dict:
         """
         Observes the current textual state, performs inference, and executes a mutation.
         """
         # 0. Auto-Sanitize Phase
-        self.cleanup_error_nodes()
+        self.cleanup_error_nodes(session_id)
         
         # 1. State Encoding
         try:
