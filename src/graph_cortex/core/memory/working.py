@@ -2,17 +2,11 @@ import uuid
 from datetime import datetime
 from graph_cortex.infrastructure.db.neo4j_connection import get_session
 
+
 class WorkingMemory:
-    """
-    Handles real-time bounded interactions.
-    This acts as a short-term buffer before memories are summarized into episodic 
-    or semantic structures.
-    """
-    def __init__(self):
-        pass
+    """Short-term interaction buffer before consolidation into episodic/semantic."""
 
     def add_interaction(self, session_id: str):
-        """Creates a new Interaction session node."""
         query = """
         MERGE (i:Interaction {session_id: $session_id})
         ON CREATE SET i.timestamp = $timestamp, i.created_at = $timestamp
@@ -23,12 +17,10 @@ class WorkingMemory:
         return session_id
 
     def add_message(self, session_id: str, role: str, content: str):
-        """Appends a new message to an interaction session."""
         message_id = str(uuid.uuid4())
         query = """
         MATCH (i:Interaction {session_id: $session_id})
         
-        // Find the last message to link via [:NEXT]
         OPTIONAL MATCH (i)-[:CONTAINS]->(last:Message)
         WHERE NOT (last)-[:NEXT]->()
         
@@ -42,7 +34,6 @@ class WorkingMemory:
         
         CREATE (i)-[:CONTAINS]->(m)
         
-        // Link to the previous message if it exists (native Cypher conditional)
         WITH last, m
         FOREACH (_ IN CASE WHEN last IS NOT NULL THEN [1] ELSE [] END |
             CREATE (last)-[:NEXT]->(m)
@@ -50,13 +41,13 @@ class WorkingMemory:
         
         RETURN m.message_id AS id
         """
-        
+
         with get_session() as session:
             result = session.run(
-                query, 
-                session_id=session_id, 
-                message_id=message_id, 
-                role=role, 
+                query,
+                session_id=session_id,
+                message_id=message_id,
+                role=role,
                 content=content,
                 timestamp=datetime.now().isoformat()
             )

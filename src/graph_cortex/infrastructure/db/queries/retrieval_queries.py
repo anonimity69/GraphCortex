@@ -1,10 +1,7 @@
 from graph_cortex.config.retrieval import SEMANTIC_SIMILARITY_THRESHOLD, LEXICAL_ANCHOR_LIMIT, SEMANTIC_ANCHOR_LIMIT
 
+
 def get_anchors_by_fulltext(session, search_string, session_id, limit=LEXICAL_ANCHOR_LIMIT):
-    """
-    Finds anchor nodes (Entities or Concepts) using a Fulltext BM25 index search.
-    This replaces the exact substring match with probabilistic keyword relevance.
-    """
     query = """
     CALL db.index.fulltext.queryNodes("hybrid_entity_concept", $search_string)
     YIELD node, score
@@ -18,11 +15,7 @@ def get_anchors_by_fulltext(session, search_string, session_id, limit=LEXICAL_AN
 
 
 def get_anchors_by_vector_similarity(session, vector, session_id, limit=SEMANTIC_ANCHOR_LIMIT):
-    """
-    Finds anchor nodes based on semantic vector similarity (Cosine).
-    Queries both 'entity_vector_index' and 'concept_vector_index' and merges results.
-    Strict boolean logic used for node.is_active to comply with Cypher 25 SEARCH constraints.
-    """
+    """Queries both entity and concept vector indexes via UNION, returns merged results."""
     query = """
     CYPHER 25
     CALL {
@@ -57,13 +50,8 @@ def get_anchors_by_vector_similarity(session, vector, session_id, limit=SEMANTIC
 
 
 def execute_spreading_activation_hop(session, target_node_id, session_id, hop_depth):
-    """
-    Executes a custom Cypher BFS traversal from the target node up to a certain depth.
-    Calculates raw 'degree' for downstream fan-effect attenuation.
-    Note: Neo4j 5.x does not allow parameters in variable-length patterns,
-    so hop_depth is safely interpolated as an integer literal.
-    """
-    depth = int(hop_depth)  # Sanitize to prevent injection
+    # hop_depth can't be parameterized in variable-length patterns, so we sanitize + interpolate
+    depth = int(hop_depth)
     query = f"""
     MATCH path = (start)-[*1..{depth}]-(connected)
     WHERE elementId(start) = $node_id
@@ -85,15 +73,12 @@ def execute_spreading_activation_hop(session, target_node_id, session_id, hop_de
     result = session.run(query, node_id=target_node_id, session_id=session_id)
     return [record.data() for record in result]
 
+
 def get_subgraph_edges(session, node_ids, session_id):
-    """
-    Explicitly reconstructs the connections between a cluster of activated nodes.
-    Uses shortestPath to ensure connecting 'middle' nodes are captured even if 
-    their individual activation energy was below the threshold.
-    """
+    """Reconstruct edges between activated nodes. Uses shortestPath to bridge gaps."""
     if not node_ids:
         return []
-        
+
     query = """
     MATCH (n), (m)
     WHERE elementId(n) IN $node_ids 
