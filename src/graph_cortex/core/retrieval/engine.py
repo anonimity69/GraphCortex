@@ -60,12 +60,15 @@ class RetrievalEngine:
         which prunes irrelevant branches early and shortens the search journey.
         """
         G_WEIGHT = 0.3  # weight for graph distance (lower = more heuristic-driven)
+        STRONG_RELS = {"REQUIRES", "POWERED_BY", "CAUSES", "LEADS_TO", "IMPLEMENTS", "DEPENDS_ON", "HAS_ISSUE"}
+        WEAK_RELS = {"DISTRACTS", "RELATES_TO", "MENTIONS", "SIMILAR_TO"}
 
         # Priority queue: (f_cost, counter, node_uid)
         open_set = []
         counter = 0  # tiebreaker for heap stability
         visited = set()
         results = []
+        node_metadata = {}
 
         # Start from anchor (g=0, h=0 since it's already a match)
         heapq.heappush(open_set, (0.0, counter, anchor_uid, 0))
@@ -80,10 +83,13 @@ class RetrievalEngine:
 
             # Don't re-add the anchor itself as a traversed node
             if g_cost > 0:
+                meta = node_metadata.get(current_uid, {})
                 results.append({
                     "node_id": current_uid,
                     "distance": g_cost,
                     "f_cost": f_cost,
+                    "name": meta.get("name", ""),
+                    "type": meta.get("type", "")
                 })
 
             # Stop expanding if we've gone too deep
@@ -97,6 +103,12 @@ class RetrievalEngine:
                 n_uid = neighbor["node_id"]
                 if n_uid in visited:
                     continue
+                    
+                if n_uid not in node_metadata:
+                    node_metadata[n_uid] = {
+                        "name": neighbor.get("name", ""),
+                        "type": neighbor.get("type", "")
+                    }
 
                 # g_cost: one more hop
                 new_g = g_cost + 1
@@ -107,8 +119,16 @@ class RetrievalEngine:
                     h_cost = 1.0 - _cosine_similarity(n_embedding, query_vector)
                 else:
                     h_cost = 1.0  # no embedding = maximum uncertainty
+                    
+                # Apply Structural Edge-Weighting
+                rel_type = neighbor.get("rel_type", "")
+                if rel_type in STRONG_RELS:
+                    h_cost *= 0.1  # massive discount for logical connections
+                elif rel_type in WEAK_RELS:
+                    h_cost *= 2.0  # severe penalty for vague/noisy connections
 
                 f = G_WEIGHT * new_g + h_cost
+                print(f"A* Check: {neighbor.get('name')} | rel={rel_type} | g={new_g} | h={h_cost:.3f} | f={f:.3f}")
 
                 heapq.heappush(open_set, (f, counter, n_uid, new_g))
                 counter += 1

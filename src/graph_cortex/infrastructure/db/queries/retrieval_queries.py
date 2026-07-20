@@ -16,8 +16,9 @@ def get_anchors_by_fulltext(graph, search_string, session_id, limit=LEXICAL_ANCH
         'session_id': session_id,
         'limit': limit
     })
+    header = [h[1] if isinstance(h, list) and len(h) > 1 else h for h in result.header] if result and result.header else []
     return [
-        {result.header[i]: row[i] for i in range(len(result.header))}
+        {header[i]: row[i] for i in range(len(header))}
         for row in result.result_set
     ]
 
@@ -43,8 +44,9 @@ def get_anchors_by_vector_similarity(graph, vector, session_id, limit=SEMANTIC_A
             'session_id': session_id,
             'threshold': SEMANTIC_SIMILARITY_THRESHOLD
         })
+        header = [h[1] if isinstance(h, list) and len(h) > 1 else h for h in result.header] if result and result.header else []
         for row in result.result_set:
-            results.append({result.header[i]: row[i] for i in range(len(result.header))})
+            results.append({header[i]: row[i] for i in range(len(header))})
 
     # sort merged results by score descending and limit
     results.sort(key=lambda x: x['score'], reverse=True)
@@ -67,8 +69,9 @@ def get_neighbors(graph, node_uid, session_id):
         'node_uid': node_uid,
         'session_id': session_id
     })
+    header = [h[1] if isinstance(h, list) and len(h) > 1 else h for h in result.header] if result and result.header else []
     return [
-        {result.header[i]: row[i] for i in range(len(result.header))}
+        {header[i]: row[i] for i in range(len(header))}
         for row in result.result_set
     ]
 
@@ -97,8 +100,9 @@ def execute_spreading_activation_hop(graph, target_node_uid, session_id, hop_dep
         'node_uid': target_node_uid,
         'session_id': session_id
     })
+    header = [h[1] if isinstance(h, list) and len(h) > 1 else h for h in result.header] if result and result.header else []
     return [
-        {result.header[i]: row[i] for i in range(len(result.header))}
+        {header[i]: row[i] for i in range(len(header))}
         for row in result.result_set
     ]
 
@@ -115,7 +119,7 @@ def get_subgraph_edges(graph, node_uids, session_id):
       AND n.session_id = $session_id
       AND m.session_id = $session_id
       AND n.uid < m.uid
-    MATCH p = shortestPath((n)-[*1..3]-(m))
+    WITH n, m, shortestPath((n)-[*1..3]->(m)) AS p
     UNWIND relationships(p) AS r
     WITH DISTINCT r
     RETURN
@@ -129,7 +133,8 @@ def get_subgraph_edges(graph, node_uids, session_id):
         'node_uids': node_uids,
         'session_id': session_id
     })
+    header = [h[1] if isinstance(h, list) and len(h) > 1 else h for h in result.header] if result and result.header else []
     return [
-        {result.header[i]: row[i] for i in range(len(result.header))}
+        {header[i]: row[i] for i in range(len(header))}
         for row in result.result_set
     ]

@@ -46,8 +46,8 @@ class DictResult:
 
     def __init__(self, result):
         self._result = result
-        self._header = result.header if result else []
-        self._rows = result.result_set if result else []
+        self._header = [h[1] if isinstance(h, list) and len(h) > 1 else h for h in result.header] if result and result.header else []
+        self._rows = result.result_set if result and result.result_set else []
 
     def data(self):
         """Return all rows as a list of dicts."""

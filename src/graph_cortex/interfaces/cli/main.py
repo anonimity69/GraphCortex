@@ -52,7 +52,7 @@ async def _librarian_loop(librarian: LibrarianAgent, session_id: str):
     while True:
         try:
             await asyncio.sleep(60)
-            librarian.curate("Periodic maintenance cycle", session_id=session_id)
+            await librarian.curate("Periodic maintenance cycle", session_id=session_id)
         except asyncio.CancelledError:
             break
         except Exception as e:
@@ -77,7 +77,7 @@ async def run_repl():
     console.print("[dim]Tip: tail -f Logs/admin_system.log in another terminal[/]")
     console.print("Type [bold cyan]/help[/] for commands.\n")
 
-    session_id = f"session_{uuid.uuid4().hex[:8]}"
+    session_id = "hard_bench"
     manager.working.add_interaction(session_id)
     logging.info(f"New session: {session_id}")
 
@@ -123,7 +123,7 @@ async def run_repl():
 
                 elif cmd == "/curate":
                     console.print("[yellow]Running librarian...[/]")
-                    info = librarian.curate(f"Manual trigger for {session_id}", session_id=session_id)
+                    info = await librarian.curate(f"Manual trigger for {session_id}", session_id=session_id)
                     console.print(f"[green]Done:[/] {info.get('action_name', '?')} -> {info.get('status', '?')}")
 
                 elif cmd == "/data":

@@ -34,15 +34,19 @@ class SummaryAgent(BaseAgent):
 
         raw_text = llm_response.get("response", "{}").strip()
 
-        # strip markdown fences if the LLM hallucinated them
-        raw_text = re.sub(r"^```json\s*", "", raw_text)
-        raw_text = re.sub(r"^```\s*", "", raw_text)
-        raw_text = re.sub(r"\s*```$", "", raw_text)
-
-        try:
-            data = json.loads(raw_text)
-        except json.JSONDecodeError:
-            logging.error(f"[Summarizer] Bad JSON from LLM: {raw_text[:200]}")
+        # use regex to find the json block, ignoring conversational text
+        json_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(0)
+            # quick fix for trailing commas in arrays/objects
+            json_str = re.sub(r',\s*([\]}])', r'\1', json_str)
+            try:
+                data = json.loads(json_str)
+            except json.JSONDecodeError as e:
+                logging.error(f"[Summarizer] Bad JSON from LLM: {e} - {json_str[:200]}")
+                data = {"summary": "Extraction failed.", "entities": []}
+        else:
+            logging.error(f"[Summarizer] No JSON found in LLM response: {raw_text[:200]}")
             data = {"summary": "Extraction failed.", "entities": []}
 
         logging.info(f"[Summarizer] Got {len(data.get('entities', []))} entities")

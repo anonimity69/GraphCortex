@@ -91,7 +91,7 @@ class LibrarianAgent(BaseAgent):
             for row in result.result_set
         ]
 
-    def curate(self, state_text: str, session_id: str) -> dict:
+    async def curate(self, state_text: str, session_id: str, graph_context: dict = None) -> dict:
         """Run one curation cycle: encode state, pick action, execute it."""
         self.cleanup_error_nodes(session_id)
 
@@ -117,14 +117,40 @@ class LibrarianAgent(BaseAgent):
 
             elif action == 1:
                 # ADD: generate a bridging concept node from the current context
-                # FIXME: ideally this should call the LLM to extract what to add
-                node_name = f"curated_{session_id[:12]}_{self.stats['total_curations']}"
-                self.curation.merge_node(label="Concept", name=node_name, properties={
+                llm_prompt = (
+                    "Based on the following session context"
+                )
+                if graph_context and graph_context.get("network"):
+                    nodes_str = ", ".join([n["name"] for n in graph_context["network"] if "name" in n])
+                    llm_prompt += f" AND the explicitly retrieved memory nodes [{nodes_str}], "
+                else:
+                    llm_prompt += ", "
+
+                llm_prompt += (
+                    "generate a single, novel, high-level bridging concept "
+                    "or insight that connects the ideas discussed or the retrieved memory nodes. "
+                    "Respond ONLY with the short concept name "
+                    "(1-3 words, alphanumeric and underscores only, e.g., 'System_Architecture' or 'Optimization_Strategy')."
+                )
+                llm_response = await self.query_llm(user_input=state_text, context=llm_prompt)
+                concept_name = ""
+                if llm_response and llm_response.get("response"):
+                    concept_name = str(llm_response.get("response")).strip()
+                
+                # fallback if LLM fails or is too verbose
+                if not concept_name or len(concept_name) > 30:
+                    concept_name = f"curated_{session_id[:8]}_{self.stats['total_curations']}"
+                else:
+                    # sanitize the name
+                    import re
+                    concept_name = re.sub(r'[^A-Za-z0-9_]', '', concept_name.replace(' ', '_'))
+                
+                self.curation.merge_node(label="Concept", name=concept_name, properties={
                     "source": "librarian_rl",
                     "confidence": 0.5,
                     "session_id": session_id,
                 })
-                info["status"] = f"added {node_name}"
+                info["status"] = f"added {concept_name}"
 
             elif action == 2:
                 # UPDATE: bump confidence on stale nodes instead of deleting them
