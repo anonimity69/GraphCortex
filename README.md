@@ -29,11 +29,11 @@ Most agent memory is passive — store what goes in, return what's asked for, de
 
 GraphCortex is a memory layer that doesn't just store information — it restructures itself. Three agents run concurrently:
 
-- **Researcher** — handles queries using A*-guided graph traversal with lateral inhibition. Uses embedding similarity as a heuristic to find the most relevant nodes faster, then reconstructs edges between anchor nodes via `shortestPath`.
+- **Researcher** — handles queries using A*-guided graph traversal with lateral inhibition. Uses **Structural Edge-Weighting** (heavily discounting logical relationships like `REQUIRES` and penalizing weak ones like `RELATES_TO`) combined with embedding similarity as a heuristic to find the most relevant nodes faster, completely bypassing dense noise clusters. Reconstructs edges between anchor nodes via `shortestPath`.
 - **Summarizer** — runs async after each turn. Extracts entities/relationships from conversations and wires them into the episodic timeline.
-- **Librarian** — the interesting one. Runs an RL policy loop (PyTorch, REINFORCE) that observes graph state and decides whether to add bridging nodes, bump confidence on weak nodes, or soft-delete stale ones. Trained on HotpotQA via an LLM-as-judge reward signal.
+- **Librarian** — the interesting one. Runs an RL policy loop (PyTorch, REINFORCE) that observes graph state and decides whether to add bridging nodes, bump confidence on weak nodes, or soft-delete stale ones. It utilizes explicit **Graph Context Injection** during reasoning to generate highly specific, novel bridging concepts that interconnect explicit graph memories.
 
-The Librarian enforces memory immutability — it can update metadata (confidence, heat, access counts) but core factual properties (`name`, `summary`, etc.) are blocked at the environment level.
+The system relies on a unified `:Searchable` graph schema to prevent node fragmentation across different memory episodes, ensuring that nodes safely share dual-identities (e.g., acting as an `Entity` and `Concept` simultaneously). The Librarian enforces memory immutability — it can update metadata (confidence, heat, access counts) but core factual properties are blocked at the environment level.
 
 ### Memory layers
 
