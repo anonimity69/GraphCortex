@@ -21,7 +21,7 @@ class LLMClient:
 
         self.client = genai.Client(api_key=key)
 
-    async def query(self, system_prompt: str, user_input: str, context: str = "") -> dict:
+    async def query(self, system_prompt: str, user_input: str, context: str = "", response_mime_type: str = "text/plain") -> dict:
         if context:
             full_prompt = f"System: {system_prompt}\n\nContext Memory:\n{context}\n\nUser: {user_input}"
         else:
@@ -33,7 +33,8 @@ class LLMClient:
                 contents=full_prompt,
                 config=types.GenerateContentConfig(
                     temperature=LLM_TEMPERATURE,
-                    max_output_tokens=LLM_MAX_TOKENS
+                    max_output_tokens=LLM_MAX_TOKENS,
+                    response_mime_type=response_mime_type
                 )
             )
 

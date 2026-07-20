@@ -8,12 +8,13 @@ class BaseAgent:
         self.system_prompt = system_prompt
         self.llm = LLMClient()
 
-    async def query_llm(self, user_input: str, context: str = "") -> dict:
+    async def query_llm(self, user_input: str, context: str = "", response_mime_type: str = "text/plain") -> dict:
         try:
             return await self.llm.query(
                 system_prompt=self.system_prompt,
                 user_input=user_input,
-                context=context
+                context=context,
+                response_mime_type=response_mime_type
             )
         except Exception as e:
             logging.error(f"[{self.name}] LLM query failed: {e}")

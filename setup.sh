@@ -48,7 +48,7 @@ MAX_RETRIES=30
 RETRY_COUNT=0
 BAR_SIZE=40
 
-until [ "$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}starting{{end}}' falkordb_graphcortex 2>/dev/null)" == "healthy" ]; do
+until [ "$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}starting{{end}}' falkordb_graphcortex 2>/dev/null)" = "healthy" ]; do
     RETRY_COUNT=$((RETRY_COUNT+1))
     
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then

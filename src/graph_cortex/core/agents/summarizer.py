@@ -30,9 +30,9 @@ class SummaryAgent(BaseAgent):
         interaction_text = f"User: {user_input}\nAgent: {agent_response}"
         logging.info("[Summarizer] Extracting entities...")
 
-        llm_response = await self.query_llm(user_input=interaction_text)
+        llm_response = await self.query_llm(user_input=interaction_text, response_mime_type="application/json")
 
-        raw_text = llm_response.get("response", "{}").strip()
+        raw_text = (llm_response.get("response") or "{}").strip()
 
         # use regex to find the json block, ignoring conversational text
         json_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
