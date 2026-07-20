@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 
 # GraphCortex Shutdown Script
 # "Cleanly stop the swarm."

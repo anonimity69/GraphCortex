@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 
 # GraphCortex Setup Script
 # "One command to rule the swarm."
