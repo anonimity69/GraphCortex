@@ -34,16 +34,34 @@ class LLMClient:
                 config=types.GenerateContentConfig(
                     temperature=LLM_TEMPERATURE,
                     max_output_tokens=LLM_MAX_TOKENS,
-                    response_mime_type=response_mime_type
+                    response_mime_type=response_mime_type,
+                    safety_settings=[
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                        ),
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                        ),
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                        ),
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                        ),
+                    ]
                 )
             )
 
-            response = await asyncio.wait_for(coro, timeout=90.0)
+            response = await asyncio.wait_for(coro, timeout=180.0)
             return {"status": "success", "response": response.text}
 
         except asyncio.TimeoutError:
-            logging.error("LLM timeout (90s)")
-            return {"status": "error", "error": "LLM request timed out (90s limit)"}
+            logging.error("LLM timeout (180s)")
+            return {"status": "error", "error": "LLM request timed out (180s limit)"}
         except Exception as e:
             logging.error(f"LLM error: {e}")
             return {"status": "error", "error": str(e)}

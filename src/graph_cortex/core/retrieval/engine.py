@@ -139,7 +139,10 @@ class RetrievalEngine:
         search_query = query_terms[0] if query_terms else ""
 
         # FalkorDB's fulltext index uses RediSearch — sanitize special chars
-        bm25_safe_query = re.sub(r'[^A-Za-z0-9\s]', '', search_query).strip()
+        clean_query = re.sub(r'[^A-Za-z0-9\s]', '', search_query).strip()
+        # Create an OR query for terms to allow partial matches (e.g. finding 'Jason' from 'where is jason')
+        terms = [t for t in clean_query.split() if len(t) > 2] # ignore very short words
+        bm25_safe_query = " | ".join(terms) if terms else clean_query
 
         graph = get_graph()
 
