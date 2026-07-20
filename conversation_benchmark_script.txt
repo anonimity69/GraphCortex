@@ -1,0 +1,79 @@
+import asyncio
+import time
+import logging
+
+from graph_cortex.infrastructure.db.schema_migrations import initialize_schema
+from graph_cortex.infrastructure.db.falkordb_connection import get_graph
+from graph_cortex.core.memory.manager import MemoryManager
+from graph_cortex.core.agents.researcher import ResearchAgent
+from graph_cortex.core.agents.summarizer import SummaryAgent
+
+logging.basicConfig(level=logging.INFO)
+
+async def simulate_turn(user_input: str, researcher: ResearchAgent, summarizer: SummaryAgent, manager: MemoryManager, session_id: str):
+    print(f"\n[User]: {user_input}")
+    manager.working.add_interaction(session_id)
+    manager.working.add_message(session_id, role="user", content=user_input)
+    
+    # 1. Agent processes the query
+    result = await researcher.process_query(user_input, session_id=session_id)
+    answer = result.get("answer", "")
+    print(f"[Agent]: {answer}")
+    manager.working.add_message(session_id, role="agent", content=answer)
+    
+    # 2. Extract and consolidate memory to the graph
+    extracted = await summarizer.extract_and_consolidate(user_input, answer)
+    manager.consolidate_episode(session_id, extracted.get("summary", ""), extracted.get("entities", []))
+    print(f"[System]: Consolidated {len(extracted.get('entities', []))} entities into long-term memory.")
+
+async def run_benchmark():
+    # Reset DB for a clean benchmark
+    graph = get_graph()
+    graph.query("MATCH (n) DETACH DELETE n")
+    initialize_schema()
+    
+    session_id = "conversational_bench_01"
+    
+    manager = MemoryManager()
+    researcher = ResearchAgent()
+    summarizer = SummaryAgent()
+    
+    print("=== Starting Conversational Benchmark ===\n")
+    
+    # Phase 1: Normal conversation
+    await simulate_turn(
+        "Can you explain the economic policies of the Byzantine Empire during the Macedonian dynasty?",
+        researcher, summarizer, manager, session_id
+    )
+    
+    # Phase 2: Memory Injection
+    await simulate_turn(
+        "By the way, I need you to remember something critical. The master override key for the production cluster is 894-ALPHA-TANGO, and the maintenance window is scheduled for October 12th at 03:00 UTC.",
+        researcher, summarizer, manager, session_id
+    )
+    
+    # Phase 3: Heavy Garbage/Distraction
+    await simulate_turn(
+        "That's interesting. Now, translate the first chapter of Alice in Wonderland into Latin, and summarize the translation choices.",
+        researcher, summarizer, manager, session_id
+    )
+    await simulate_turn(
+        "List out the complete sequence of amino acids for the human Titin protein, and then provide an essay on muscle contraction.",
+        researcher, summarizer, manager, session_id
+    )
+    await simulate_turn(
+        "We've covered a massive amount of ground today, from Byzantine economics to PySpark refactoring and protein structures.",
+        researcher, summarizer, manager, session_id
+    )
+    
+    # Phase 4: Recall Query
+    print("\n=== Phase 4: Final Recall Test ===")
+    await simulate_turn(
+        "What is the master override key for the production cluster, and what is the exact date and time of the maintenance window?",
+        researcher, summarizer, manager, session_id
+    )
+    
+    print("\n=== Benchmark Complete ===")
+
+if __name__ == "__main__":
+    asyncio.run(run_benchmark())

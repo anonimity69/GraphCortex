@@ -128,7 +128,7 @@ class RetrievalEngine:
                     h_cost *= 2.0  # severe penalty for vague/noisy connections
 
                 f = G_WEIGHT * new_g + h_cost
-                print(f"A* Check: {neighbor.get('name')} | rel={rel_type} | g={new_g} | h={h_cost:.3f} | f={f:.3f}")
+                self.logger.debug(f"A* Check: {neighbor.get('name')} | rel={rel_type} | g={new_g} | h={h_cost:.3f} | f={f:.3f}")
 
                 heapq.heappush(open_set, (f, counter, n_uid, new_g))
                 counter += 1
