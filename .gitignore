@@ -33,7 +33,7 @@ htmlcov/
 .coverage
 .coverage.*
 
-# neo4j / docker
+# falkordb / docker
 *.pid
 
 # editors

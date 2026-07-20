@@ -6,7 +6,7 @@ authors = [
     {name = "GraphCortex Team", email = "team@graphcortex.example.com"},
 ]
 dependencies = [
-    "neo4j>=5.0.0",
+    "falkordb>=1.0.0",
     "python-dotenv>=1.0.0",
     "ray[serve]>=2.9.0",
     "google-genai>=1.0.0",

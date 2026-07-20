@@ -2,7 +2,6 @@ import gymnasium as gym
 from gymnasium import spaces
 from typing import Dict, Any
 
-from graph_cortex.infrastructure.db.neo4j_connection import get_session
 from graph_cortex.core.memory.curation import MemoryCuration
 
 # properties the librarian is never allowed to touch
@@ -10,7 +9,7 @@ IMMUTABLE_PROPS = {"name", "summary", "content", "purpose", "event_id", "message
 
 
 class GraphMemoryEnv(gym.Env):
-    """Gym env bridging discrete RL actions to neo4j curation ops."""
+    """Gym env bridging discrete RL actions to FalkorDB curation ops."""
 
     def __init__(self, config: Dict[str, Any] = None):
         super().__init__()

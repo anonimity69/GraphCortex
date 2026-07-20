@@ -1,100 +1,135 @@
 from graph_cortex.config.retrieval import SEMANTIC_SIMILARITY_THRESHOLD, LEXICAL_ANCHOR_LIMIT, SEMANTIC_ANCHOR_LIMIT
 
 
-def get_anchors_by_fulltext(session, search_string, session_id, limit=LEXICAL_ANCHOR_LIMIT):
+def get_anchors_by_fulltext(graph, search_string, session_id, limit=LEXICAL_ANCHOR_LIMIT):
+    """Fulltext search on :Searchable super-label via FalkorDB's RediSearch index."""
     query = """
-    CALL db.index.fulltext.queryNodes("hybrid_entity_concept", $search_string)
+    CALL db.idx.fulltext.queryNodes('Searchable', $search_string)
     YIELD node, score
     WHERE node.is_active = true AND node.session_id = $session_id
-    RETURN elementId(node) AS node_id, node.name AS name, labels(node)[0] AS type, score
+    RETURN node.uid AS node_id, node.name AS name, labels(node)[0] AS type, score
     ORDER BY score DESC
     LIMIT $limit
     """
-    result = session.run(query, search_string=search_string, session_id=session_id, limit=limit)
-    return [record.data() for record in result]
+    result = graph.query(query, params={
+        'search_string': search_string,
+        'session_id': session_id,
+        'limit': limit
+    })
+    return [
+        {result.header[i]: row[i] for i in range(len(result.header))}
+        for row in result.result_set
+    ]
 
 
-def get_anchors_by_vector_similarity(session, vector, session_id, limit=SEMANTIC_ANCHOR_LIMIT):
-    """Queries both entity and concept vector indexes via UNION, returns merged results."""
+def get_anchors_by_vector_similarity(graph, vector, session_id, limit=SEMANTIC_ANCHOR_LIMIT):
+    """Vector similarity search across Entity and Concept nodes via UNION."""
+    # FalkorDB requires separate vector queries per label, combined with UNION
+    # We query each label independently and merge in Python for cleaner control
+    results = []
+
+    for label in ['Entity', 'Concept']:
+        query = f"""
+        CALL db.idx.vector.queryNodes('{label}', 'embedding', $limit, vecf32($vector))
+        YIELD node, score
+        WHERE node.session_id = $session_id AND node.is_active = true AND score > $threshold
+        RETURN node.uid AS node_id, node.name AS name, '{label}' AS type, score
+        ORDER BY score DESC
+        LIMIT $limit
+        """
+        result = graph.query(query, params={
+            'limit': limit,
+            'vector': vector,
+            'session_id': session_id,
+            'threshold': SEMANTIC_SIMILARITY_THRESHOLD
+        })
+        for row in result.result_set:
+            results.append({result.header[i]: row[i] for i in range(len(result.header))})
+
+    # sort merged results by score descending and limit
+    results.sort(key=lambda x: x['score'], reverse=True)
+    return results[:limit]
+
+
+def get_neighbors(graph, node_uid, session_id):
+    """Get immediate neighbors of a node for A* traversal."""
     query = """
-    CYPHER 25
-    CALL {
-        MATCH (e:Entity)
-        SEARCH e IN (
-            VECTOR INDEX entity_vector_index 
-            FOR $vector 
-            WHERE e.session_id = $session_id AND e.is_active = true
-            LIMIT $limit
-        ) SCORE AS score
-        RETURN e AS node, score
-        
-        UNION
-        
-        MATCH (c:Concept)
-        SEARCH c IN (
-            VECTOR INDEX concept_vector_index 
-            FOR $vector 
-            WHERE c.session_id = $session_id AND c.is_active = true
-            LIMIT $limit
-        ) SCORE AS score
-        RETURN c AS node, score
-    }
-    WITH node, score
-    WHERE score > $threshold
-    RETURN elementId(node) AS node_id, node.name AS name, labels(node)[0] AS type, score
-    ORDER BY score DESC
-    LIMIT $limit
+    MATCH (start {uid: $node_uid})-[r]-(neighbor)
+    WHERE neighbor.session_id = $session_id
+      AND neighbor.is_active = true
+    RETURN neighbor.uid AS node_id,
+           neighbor.name AS name,
+           labels(neighbor)[0] AS type,
+           type(r) AS rel_type,
+           neighbor.embedding AS embedding
     """
-    result = session.run(query, limit=limit, vector=vector, session_id=session_id, threshold=SEMANTIC_SIMILARITY_THRESHOLD)
-    return [record.data() for record in result]
+    result = graph.query(query, params={
+        'node_uid': node_uid,
+        'session_id': session_id
+    })
+    return [
+        {result.header[i]: row[i] for i in range(len(result.header))}
+        for row in result.result_set
+    ]
 
 
-def execute_spreading_activation_hop(session, target_node_id, session_id, hop_depth):
-    # hop_depth can't be parameterized in variable-length patterns, so we sanitize + interpolate
+def execute_spreading_activation_hop(graph, target_node_uid, session_id, hop_depth):
+    """Multi-hop spreading activation from a single anchor node."""
     depth = int(hop_depth)
     query = f"""
     MATCH path = (start)-[*1..{depth}]-(connected)
-    WHERE elementId(start) = $node_id
+    WHERE start.uid = $node_uid
       AND connected.session_id = $session_id
       AND connected.is_active = true
       AND ALL(node IN nodes(path) WHERE node.session_id = $session_id AND node.is_active = true)
     WITH start, connected, length(path) AS distance,
-         relationships(path) AS rels,
-         COUNT {{ (connected)--() }} AS degree
-    RETURN 
-        elementId(connected) AS node_id, 
-        connected.name AS name, 
+         relationships(path) AS rels
+    RETURN
+        connected.uid AS node_id,
+        connected.name AS name,
         labels(connected)[0] AS type,
         distance,
-        degree,
+        SIZE([(connected)--() | 1]) AS degree,
         [r in rels | {{type: type(r), start_name: startNode(r).name, end_name: endNode(r).name}}] AS path_rels
     ORDER BY distance ASC
     """
-    result = session.run(query, node_id=target_node_id, session_id=session_id)
-    return [record.data() for record in result]
+    result = graph.query(query, params={
+        'node_uid': target_node_uid,
+        'session_id': session_id
+    })
+    return [
+        {result.header[i]: row[i] for i in range(len(result.header))}
+        for row in result.result_set
+    ]
 
 
-def get_subgraph_edges(session, node_ids, session_id):
+def get_subgraph_edges(graph, node_uids, session_id):
     """Reconstruct edges between activated nodes. Uses shortestPath to bridge gaps."""
-    if not node_ids:
+    if not node_uids:
         return []
 
     query = """
     MATCH (n), (m)
-    WHERE elementId(n) IN $node_ids 
-      AND elementId(m) IN $node_ids 
+    WHERE n.uid IN $node_uids
+      AND m.uid IN $node_uids
       AND n.session_id = $session_id
       AND m.session_id = $session_id
-      AND elementId(n) < elementId(m)
+      AND n.uid < m.uid
     MATCH p = shortestPath((n)-[*1..3]-(m))
     UNWIND relationships(p) AS r
     WITH DISTINCT r
-    RETURN 
-        elementId(startNode(r)) AS source_id, 
-        startNode(r).name AS source_name, 
-        type(r) AS rel_type, 
-        elementId(endNode(r)) AS target_id, 
+    RETURN
+        startNode(r).uid AS source_id,
+        startNode(r).name AS source_name,
+        type(r) AS rel_type,
+        endNode(r).uid AS target_id,
         endNode(r).name AS target_name
     """
-    result = session.run(query, node_ids=node_ids, session_id=session_id)
-    return [record.data() for record in result]
+    result = graph.query(query, params={
+        'node_uids': node_uids,
+        'session_id': session_id
+    })
+    return [
+        {result.header[i]: row[i] for i in range(len(result.header))}
+        for row in result.result_set
+    ]

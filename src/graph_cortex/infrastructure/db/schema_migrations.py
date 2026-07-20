@@ -1,57 +1,66 @@
 import logging
-from graph_cortex.infrastructure.db.neo4j_connection import get_session
+from graph_cortex.infrastructure.db.falkordb_connection import get_graph, execute_query
 from graph_cortex.config.embedding import get_vector_dimension
 
 
 def initialize_schema():
-    """Create constraints, indexes, and vector indexes. Safe to call repeatedly."""
-    base_queries = [
-        "CREATE INDEX IF NOT EXISTS FOR (i:Interaction) ON (i.timestamp)",
-        "CREATE INDEX IF NOT EXISTS FOR (m:Message) ON (m.message_id)",
-        "CREATE INDEX IF NOT EXISTS FOR (m:Message) ON (m.session_id)",
-        "CREATE CONSTRAINT IF NOT EXISTS FOR (e:Event) REQUIRE e.event_id IS UNIQUE",
-        "CREATE INDEX IF NOT EXISTS FOR (e:Event) ON (e.timestamp)",
-        "CREATE INDEX IF NOT EXISTS FOR (e:Event) ON (e.session_id)",
-        "CREATE CONSTRAINT IF NOT EXISTS FOR (e:Entity) REQUIRE (e.name, e.session_id) IS UNIQUE",
-        "CREATE CONSTRAINT IF NOT EXISTS FOR (c:Concept) REQUIRE (c.name, c.session_id) IS UNIQUE",
-        "CREATE INDEX IF NOT EXISTS FOR (e:Entity) ON (e.session_id)",
-        "CREATE INDEX IF NOT EXISTS FOR (c:Concept) ON (c.session_id)",
-        "CREATE FULLTEXT INDEX hybrid_entity_concept IF NOT EXISTS FOR (n:Entity|Concept) ON EACH [n.name]",
-        # backfill is_active for any nodes that predate soft-delete
-        "MATCH (n) WHERE n.is_active IS NULL SET n.is_active = true"
-    ]
+    """Create indexes and vector indexes for FalkorDB. Safe to call repeatedly."""
 
     dim = get_vector_dimension()
+    graph = get_graph()
 
-    vector_queries = [
-        "DROP INDEX entity_vector_index IF EXISTS",
-        "DROP INDEX concept_vector_index IF EXISTS",
-        f"CYPHER 25 CREATE VECTOR INDEX entity_vector_index FOR (e:Entity) ON (e.embedding) WITH [e.session_id, e.is_active] OPTIONS {{indexConfig: {{`vector.dimensions`: {dim}, `vector.similarity_function`: 'cosine'}}}}",
-        f"CYPHER 25 CREATE VECTOR INDEX concept_vector_index FOR (c:Concept) ON (c.embedding) WITH [c.session_id, c.is_active] OPTIONS {{indexConfig: {{`vector.dimensions`: {dim}, `vector.similarity_function`: 'cosine'}}}}"
+    # --- Standard indexes ---
+    index_queries = [
+        "CREATE INDEX FOR (i:Interaction) ON (i.timestamp)",
+        "CREATE INDEX FOR (i:Interaction) ON (i.session_id)",
+        "CREATE INDEX FOR (m:Message) ON (m.message_id)",
+        "CREATE INDEX FOR (m:Message) ON (m.session_id)",
+        "CREATE INDEX FOR (m:Message) ON (m.uid)",
+        "CREATE INDEX FOR (e:Event) ON (e.event_id)",
+        "CREATE INDEX FOR (e:Event) ON (e.timestamp)",
+        "CREATE INDEX FOR (e:Event) ON (e.session_id)",
+        "CREATE INDEX FOR (e:Event) ON (e.uid)",
+        "CREATE INDEX FOR (e:Entity) ON (e.session_id)",
+        "CREATE INDEX FOR (e:Entity) ON (e.uid)",
+        "CREATE INDEX FOR (c:Concept) ON (c.session_id)",
+        "CREATE INDEX FOR (c:Concept) ON (c.uid)",
+        "CREATE INDEX FOR (s:Searchable) ON (s.uid)",
     ]
 
+    for q in index_queries:
+        try:
+            graph.query(q)
+        except Exception:
+            pass  # index already exists
+    logging.info("Schema indexes initialized")
+
+    # --- Fulltext index on :Searchable super-label ---
     try:
-        with get_session() as session:
-            # drop legacy single-property uniqueness constraints if they exist
-            constraints = session.run("SHOW CONSTRAINTS YIELD name, labelsOrTypes, properties, type").data()
-            for c in constraints:
-                if c['type'] == 'UNIQUENESS' and c['properties'] == ['name'] and c['labelsOrTypes'] in [['Entity'], ['Concept']]:
-                    session.run(f"DROP CONSTRAINT {c['name']}")
-                    logging.info(f"Dropped legacy constraint: {c['name']}")
+        graph.query("CALL db.idx.fulltext.createNodeIndex('Searchable', 'name')")
+        logging.info("Fulltext index created on :Searchable(name)")
+    except Exception:
+        pass  # already exists
 
-            for q in base_queries:
-                session.run(q)
-            logging.info("Schema initialized")
+    # --- Vector indexes ---
+    vector_queries = [
+        f"CREATE VECTOR INDEX FOR (e:Entity) ON (e.embedding) OPTIONS {{dimension: {dim}, similarityFunction: 'cosine'}}",
+        f"CREATE VECTOR INDEX FOR (c:Concept) ON (c.embedding) OPTIONS {{dimension: {dim}, similarityFunction: 'cosine'}}",
+    ]
 
-            try:
-                for q in vector_queries:
-                    session.run(q)
-                logging.info(f"Vector indexes created ({dim}d)")
-            except Exception as e:
-                logging.warning(f"Vector index setup failed (Neo4j version may not support it): {e}")
+    for q in vector_queries:
+        try:
+            graph.query(q)
+        except Exception:
+            pass  # already exists
+    logging.info(f"Vector indexes initialized ({dim}d)")
 
-    except Exception as e:
-        logging.error(f"Schema init failed: {e}")
+    # --- Backfill is_active for any nodes that predate soft-delete ---
+    try:
+        graph.query("MATCH (n) WHERE n.is_active IS NULL SET n.is_active = true")
+    except Exception:
+        pass
+
+    logging.info("FalkorDB schema initialization complete")
 
 
 if __name__ == "__main__":

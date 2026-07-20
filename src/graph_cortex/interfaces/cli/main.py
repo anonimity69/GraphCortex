@@ -30,7 +30,7 @@ from graph_cortex.core.agents.researcher import ResearchAgent
 from graph_cortex.core.agents.summarizer import SummaryAgent
 from graph_cortex.core.agents.librarian import LibrarianAgent
 from graph_cortex.core.rl.trainer import RLPyTorchTrainer
-from graph_cortex.infrastructure.db.neo4j_connection import get_session
+from graph_cortex.infrastructure.db.falkordb_connection import get_graph
 
 console = Console()
 
@@ -43,6 +43,7 @@ BANNER = """
 [bold #FFBF00] ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝[/][bold #10B981]  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝[/]
 
 [dim italic #6B7280]          neuro-symbolic graph memory for AI agents[/]
+[dim italic #3B82F6]                    powered by FalkorDB[/]
 """
 
 
@@ -126,9 +127,12 @@ async def run_repl():
                     console.print(f"[green]Done:[/] {info.get('action_name', '?')} -> {info.get('status', '?')}")
 
                 elif cmd == "/data":
-                    with get_session() as s:
-                        nodes = s.run("MATCH (n) RETURN labels(n)[0] as label, count(*) as count")
-                        node_str = " | ".join([f"{r['label']}: [bold]{r['count']}[/]" for r in nodes])
+                    graph = get_graph()
+                    result = graph.query("MATCH (n) RETURN labels(n)[0] as label, count(*) as count")
+                    node_str = " | ".join([
+                        f"{row[0]}: [bold]{row[1]}[/]"
+                        for row in result.result_set
+                    ])
 
                     ds_path = "data/rl_training/hotpot_qa_sample.jsonl"
                     ds_count = 0

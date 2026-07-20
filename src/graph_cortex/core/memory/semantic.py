@@ -1,6 +1,7 @@
+import uuid
 from typing import List, Dict
 import re
-from graph_cortex.infrastructure.db.neo4j_connection import get_session
+from graph_cortex.infrastructure.db.falkordb_connection import get_graph
 from graph_cortex.config.retrieval import DEFAULT_RELATIONSHIP_TYPE
 from graph_cortex.config.embedding import encode as encode_embedding
 
@@ -25,9 +26,13 @@ class SemanticMemory:
 
         composite = self._composite_text(name, node_type, attributes)
         embedding = self._embed(composite)
+        uid = str(uuid.uuid4())
 
+        # MERGE on name+session_id, add :Searchable super-label for fulltext indexing
         query = f"MERGE (e:{node_type} {{name: $name, session_id: $session_id}}) "
-        query += "ON CREATE SET e.is_active = true "
+        query += "ON CREATE SET e.is_active = true, e.uid = $uid "
+        # Always add :Searchable label for fulltext index coverage
+        query += "SET e:Searchable "
 
         set_parts = ["e.embedding = $embedding"]
         for k in attributes.keys():
@@ -36,8 +41,14 @@ class SemanticMemory:
         query += f"SET {', '.join(set_parts)} "
         query += "RETURN e.name AS name"
 
-        with get_session() as session:
-            session.run(query, name=name, session_id=session_id, embedding=embedding, **attributes)
+        graph = get_graph()
+        graph.query(query, params={
+            'name': name,
+            'session_id': session_id,
+            'embedding': embedding,
+            'uid': uid,
+            **attributes
+        })
         return name
 
     def extract_from_event(self,
@@ -54,38 +65,51 @@ class SemanticMemory:
         entity_vector = self._embed(self._composite_text(entity_name, "Entity", entity_props))
         concept_vector = self._embed(self._composite_text(concept_name, "Concept", concept_props))
 
-        query = f"""
-        MATCH (ev:Event {{event_id: $event_id, session_id: $session_id}})
-        MERGE (e:Entity {{name: $entity_name, session_id: $session_id}})
-        ON CREATE SET e.is_active = true
-        SET e.embedding = $entity_vector
-        {" ".join([f"SET e.{k} = $e_prop_{i}" for i, k in enumerate((entity_props or {}).keys())])}
-        
-        MERGE (c:Concept {{name: $concept_name, session_id: $session_id}})
-        ON CREATE SET c.is_active = true
-        SET c.embedding = $concept_vector
-        {" ".join([f"SET c.{k} = $c_prop_{i}" for i, k in enumerate((concept_props or {}).keys())])}
-        
-        MERGE (e)-[:EXTRACTED_FROM]->(ev)
-        MERGE (c)-[:EXTRACTED_FROM]->(ev)
-        MERGE (e)-[:{rel_type}]->(c)
-        """
+        entity_uid = str(uuid.uuid4())
+        concept_uid = str(uuid.uuid4())
 
+        # Build dynamic SET clauses for entity and concept properties
+        entity_set_parts = []
+        concept_set_parts = []
         params = {
             "event_id": event_id,
             "session_id": session_id,
             "entity_name": entity_name,
             "concept_name": concept_name,
             "entity_vector": entity_vector,
-            "concept_vector": concept_vector
+            "concept_vector": concept_vector,
+            "entity_uid": entity_uid,
+            "concept_uid": concept_uid,
         }
+
         if entity_props:
             for i, (k, v) in enumerate(entity_props.items()):
+                entity_set_parts.append(f"SET e.{k} = $e_prop_{i}")
                 params[f"e_prop_{i}"] = v
         if concept_props:
             for i, (k, v) in enumerate(concept_props.items()):
+                concept_set_parts.append(f"SET c.{k} = $c_prop_{i}")
                 params[f"c_prop_{i}"] = v
 
-        with get_session() as session:
-            session.run(query, **params)
+        query = f"""
+        MATCH (ev:Event {{event_id: $event_id, session_id: $session_id}})
+        MERGE (e:Entity {{name: $entity_name, session_id: $session_id}})
+        ON CREATE SET e.is_active = true, e.uid = $entity_uid
+        SET e:Searchable
+        SET e.embedding = $entity_vector
+        {" ".join(entity_set_parts)}
+
+        MERGE (c:Concept {{name: $concept_name, session_id: $session_id}})
+        ON CREATE SET c.is_active = true, c.uid = $concept_uid
+        SET c:Searchable
+        SET c.embedding = $concept_vector
+        {" ".join(concept_set_parts)}
+
+        MERGE (e)-[:EXTRACTED_FROM]->(ev)
+        MERGE (c)-[:EXTRACTED_FROM]->(ev)
+        MERGE (e)-[:{rel_type}]->(c)
+        """
+
+        graph = get_graph()
+        graph.query(query, params=params)
         return True

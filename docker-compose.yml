@@ -1,27 +1,18 @@
 services:
-  neo4j:
-    image: neo4j:2026.02
-    container_name: neo4j_nsdmg
+  falkordb:
+    image: falkordb/falkordb:latest
+    container_name: falkordb_graphcortex
     ports:
-      - "7475:7474" # HTTP port for Neo4j Browser
-      - "7688:7687" # Bolt port
-    environment:
-      - NEO4J_AUTH=${NEO4J_USERNAME}/${NEO4J_PASSWORD}
-      - NEO4J_apoc_export_file_enabled=true
-      - NEO4J_apoc_import_file_enabled=true
-      - NEO4J_apoc_import_file_use__neo4j__config=true
-      - NEO4J_PLUGINS=["apoc", "graph-data-science"]
+      - "6379:6379"   # Redis/FalkorDB protocol
+      - "3000:3000"   # FalkorDB Browser UI
     volumes:
-      - ./data/neo4j/data:/data
-      - ./data/neo4j/logs:/logs
-      - ./data/neo4j/import:/var/lib/neo4j/import
-      - ./data/neo4j/plugins:/plugins
+      - ./data/falkordb:/data
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
-      start_period: 15s
+      start_period: 5s
 
   graphcortex:
     build: .
@@ -29,12 +20,14 @@ services:
     tty: true
     stdin_open: true
     depends_on:
-      neo4j:
+      falkordb:
         condition: service_healthy
     env_file:
       - .env
     environment:
-      - NEO4J_URI=bolt://neo4j:7687
+      - FALKORDB_HOST=falkordb
+      - FALKORDB_PORT=6379
+      - FALKORDB_GRAPH=graphcortex
       - EMBEDDING_DEVICE=cpu # Change to 'cuda' if using NVIDIA GPU on Win/Linux
       - HF_HOME=/app/data/huggingface
       - PYTHONPATH=/app/src

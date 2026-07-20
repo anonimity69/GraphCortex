@@ -3,7 +3,7 @@
 # GraphCortex Shutdown Script
 # "Cleanly stop the swarm."
 
-echo "Stopping GraphCortex Swarm and Neo4j Database..."
+echo "Stopping GraphCortex Swarm and FalkorDB Database..."
 
 # 1. Stop and remove containers
 docker-compose down

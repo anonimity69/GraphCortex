@@ -8,7 +8,7 @@ from graph_cortex.core.agents.base_agent import BaseAgent
 from graph_cortex.core.rl.policy import LibrarianPolicy
 from graph_cortex.config.embedding import encode as encode_embedding
 from graph_cortex.core.memory.curation import MemoryCuration
-from graph_cortex.infrastructure.db.neo4j_connection import get_session
+from graph_cortex.infrastructure.db.falkordb_connection import get_graph
 
 
 class LibrarianAgent(BaseAgent):
@@ -46,14 +46,13 @@ class LibrarianAgent(BaseAgent):
         SET m.is_active = false
         RETURN count(m) as n
         """
-        with get_session() as session:
-            result = session.run(query, session_id=session_id)
-            record = result.single()
-            count = record["n"] if record else 0
-            if count > 0:
-                self.stats["sanitized_nodes"] += count
-                logging.info(f"Librarian: purged {count} error nodes from {session_id}")
-            return count
+        graph = get_graph()
+        result = graph.query(query, params={'session_id': session_id})
+        count = result.result_set[0][0] if result.result_set else 0
+        if count > 0:
+            self.stats["sanitized_nodes"] += count
+            logging.info(f"Librarian: purged {count} error nodes from {session_id}")
+        return count
 
     def get_stats(self) -> dict:
         return self.stats
@@ -65,26 +64,32 @@ class LibrarianAgent(BaseAgent):
         WHERE n.session_id = $session_id AND n.is_active = true
           AND (n.confidence IS NOT NULL AND n.confidence < 0.3
                OR n.access_count IS NOT NULL AND n.access_count < 2)
-        RETURN elementId(n) AS node_id, n.name AS name, labels(n)[0] AS label
+        RETURN n.uid AS node_id, n.name AS name, labels(n)[0] AS label
         LIMIT 5
         """
-        with get_session() as session:
-            result = session.run(query, session_id=session_id)
-            return [r.data() for r in result]
+        graph = get_graph()
+        result = graph.query(query, params={'session_id': session_id})
+        return [
+            {result.header[i]: row[i] for i in range(len(result.header))}
+            for row in result.result_set
+        ]
 
     def _find_duplicate_candidates(self, session_id: str) -> list:
         """Find entity names that appear more than once in the same session."""
         query = """
         MATCH (n)
         WHERE n.session_id = $session_id AND n.is_active = true AND n.name IS NOT NULL
-        WITH n.name AS name, collect(elementId(n)) AS ids, count(*) AS cnt
+        WITH n.name AS name, collect(n.uid) AS ids, count(*) AS cnt
         WHERE cnt > 1
         RETURN name, ids
         LIMIT 3
         """
-        with get_session() as session:
-            result = session.run(query, session_id=session_id)
-            return [r.data() for r in result]
+        graph = get_graph()
+        result = graph.query(query, params={'session_id': session_id})
+        return [
+            {result.header[i]: row[i] for i in range(len(result.header))}
+            for row in result.result_set
+        ]
 
     def curate(self, state_text: str, session_id: str) -> dict:
         """Run one curation cycle: encode state, pick action, execute it."""
