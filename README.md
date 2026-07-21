@@ -6,19 +6,21 @@
 
 <p align="center">
   <strong>The self-healing memory layer for AI agents.</strong><br />
-  A knowledge graph that autonomously cleans, merges, and optimizes itself—powered by reinforcement learning.
+  A knowledge graph that prunes, strengthens, and extends itself in the background—guided by a reinforcement-learned policy.
 </p>
 
 <p align="center">
   <a href="#quickstart">Quickstart</a> &nbsp;·&nbsp;
   <a href="#architecture-under-the-hood">How it works</a> &nbsp;·&nbsp;
-  <a href="https://github.com/anonimity69/GraphCortex/blob/main/docs/implementation_plan_rl_training.md">RL Training</a>
+  <a href="https://github.com/anonimity69/GraphCortex/blob/main/DECISIONS.md">Design decisions</a> &nbsp;·&nbsp;
+  <a href="https://github.com/anonimity69/GraphCortex/blob/main/CHANGELOG.md">Changelog</a>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/db-falkordb-FF6B35?style=flat-square&labelColor=CC4400" />
   <img src="https://img.shields.io/badge/search-hybrid%20bm25%20%2B%20A*-7F77DD?style=flat-square&labelColor=3C3489" />
-  <img src="https://img.shields.io/badge/rl-grpo-1D9E75?style=flat-square&labelColor=085041" />
+  <img src="https://img.shields.io/badge/rl-reinforce-1D9E75?style=flat-square&labelColor=085041" />
+  <img src="https://img.shields.io/badge/status-pre--release-6B7280?style=flat-square&labelColor=374151" />
 </p>
 
 
@@ -40,22 +42,33 @@ Built on FalkorDB, it runs a swarm of concurrent agents that continuously curate
 
 ### Core Features
 
-- 🧠 **RL-Driven Curation (The Librarian):** A background PyTorch policy loop observes the graph state and autonomously decides to add bridging concepts, boost confidence on weak nodes, or soft-delete stale ones.
-- ⚡ **A*-Guided Retrieval (The Researcher):** Bypasses dense noise clusters using hybrid search (BM25 + Vector) combined with **Structural Edge-Weighting**. It penalizes weak connections and aggressively pursues high-value paths.
+- 🧠 **RL-Driven Curation (The Librarian):** A background PyTorch policy loop observes the graph state and decides each cycle whether to add a bridging concept, boost confidence on a weak node, soft-delete a stale one, or do nothing.
+- ⚡ **A\*-Guided Retrieval (The Researcher):** Hybrid anchor search (BM25 + vector) feeds an A\* traversal that uses embedding similarity as its heuristic, with **Structural Edge-Weighting** that discounts logical relations (`REQUIRES`, `CAUSES`, `DEPENDS_ON`) and penalizes vague ones (`RELATES_TO`, `MENTIONS`).
 - 🔄 **Async Consolidation (The Summarizer):** Automatically extracts entities and relationships from every interaction and wires them into a persistent episodic timeline.
-- 🛡️ **Memory Immutability:** Core factual properties are blocked from unauthorized modification at the environment level, ensuring graph structural integrity while metadata (heat, access counts) remains fluid.
+- 🛡️ **Memory Immutability:** Core factual properties (`name`, `summary`, `content`) are blocked from modification at the RL environment level, so autonomous curation can move metadata like confidence and access counts without destroying facts.
+
+### Where it stands
+
+GraphCortex is pre-release and not yet deployed as a hosted service. Two things are worth
+knowing before you build on it:
+
+- **Hub suppression is not active on the A\* path.** Lateral inhibition currently computes
+  its decay from traversal distance only — node degree is hardcoded, so dense hub nodes are
+  not penalized the way the design intends. Tracked for 0.3.0.
+- **The Librarian ships untrained.** No policy weights are included in the repository, so a
+  fresh clone runs a randomly initialized policy until you run `/train`. The training loop
+  itself is a bootstrap: the reward judge is fed ground truth rather than a real agent
+  answer, so the signal is weak.
+
+The [changelog](CHANGELOG.md) tracks these as they close.
 
 ---
 
 ## Quickstart
 
-GraphCortex deploys FalkorDB + the Swarm CLI. Works seamlessly on Mac (Apple Silicon/Intel), Linux, and Windows (WSL2).
+GraphCortex deploys FalkorDB + the Swarm CLI. Developed on Mac (Apple Silicon); Linux and Windows (WSL2) should work but are less tested.
 
-```bash
-pip install graphcortex
-```
-
-Or, to run from source with the CLI Swarm:
+**Recommended — from source**, which brings up FalkorDB for you:
 
 ```bash
 git clone https://github.com/anonimity69/GraphCortex.git
@@ -76,6 +89,17 @@ chmod +x setup.sh shutdown.sh
 | Visualizer | [localhost:3000](http://localhost:3000) (FalkorDB Browser) |
 
 *The setup script handles port conflicts, waits for the DB to stabilize, and drops you straight into the interactive CLI.*
+
+**Or install the package** — note that this ships the library and CLI only. You still need a
+reachable FalkorDB instance and an LLM key in the environment before `graphcortex` will
+start:
+
+```bash
+pip install graphcortex
+docker run -p 6379:6379 -p 3000:3000 falkordb/falkordb:latest
+export GEMINI_API_KEY=...   # see .env.example for all settings
+graphcortex
+```
 
 ---
 
@@ -102,7 +126,7 @@ graph TD
     Summarizer --> Ingestion[Memory Ingestion]
     
     Librarian --> RL[RL Policy]
-    RL --> GraphOps[Merge / Prune / Strengthen]
+    RL --> GraphOps[Add / Strengthen / Soft-delete]
     
     subgraph Infra[Infrastructure]
         FalkorDB[(FalkorDB)]
