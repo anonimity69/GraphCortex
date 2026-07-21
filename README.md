@@ -54,6 +54,12 @@ Built on FalkorDB, it runs a swarm of concurrent agents that continuously curate
 GraphCortex deploys FalkorDB + the Swarm CLI. Works seamlessly on Mac (Apple Silicon/Intel), Linux, and Windows (WSL2).
 
 ```bash
+pip install graphcortex
+```
+
+Or, to run from source with the CLI Swarm:
+
+```bash
 git clone https://github.com/anonimity69/GraphCortex.git
 cd GraphCortex
 
