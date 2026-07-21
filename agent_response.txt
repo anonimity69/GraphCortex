@@ -1,3 +1,0 @@
-In Project Orion, the battery issues are centered around the **Subspace Battery**. 
-
-Based on the project's technical structure, Project Orion requires a **Quantum Core**, which is powered by the **Subspace Battery**. The specific issue identified with this battery is **overheating**.
