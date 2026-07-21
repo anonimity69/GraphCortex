@@ -1,14 +1,15 @@
 [project]
-name = "graph_cortex"
-version = "0.1.0"
-description = "Distributed Neuro-Symbolic Memory Grid (NS-DMG)"
+name = "graphcortex"
+version = "0.2.0"
+description = "A self-healing knowledge graph memory layer for AI agents powered by Reinforcement Learning."
+readme = "README.md"
+license = { text = "MIT" }
 authors = [
-    {name = "GraphCortex Team", email = "team@graphcortex.example.com"},
+    {name = "Shrayanendra Nath Mandal", email = "shrayanendranathmandal@example.com"},
 ]
 dependencies = [
     "falkordb>=1.0.0",
     "python-dotenv>=1.0.0",
-    "ray[serve]>=2.9.0",
     "google-genai>=1.0.0",
     "gymnasium>=0.29.0",
     "datasets>=2.16.0",
@@ -20,12 +21,16 @@ dependencies = [
 ]
 requires-python = ">=3.9"
 
+[project.urls]
+Homepage = "https://github.com/anonimity69/GraphCortex"
+Repository = "https://github.com/anonimity69/GraphCortex.git"
+
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project.scripts]
-graphcortex-cli = "graph_cortex.interfaces.cli.main:main"
+graphcortex = "graph_cortex.interfaces.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
