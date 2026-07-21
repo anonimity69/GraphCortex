@@ -2,13 +2,17 @@
   <img src="./assets/banner.svg" width="100%" alt="GraphCortex" />
 </p>
 
+<h1 align="center">GraphCortex</h1>
+
 <p align="center">
-  A self-optimizing knowledge graph memory layer for AI agents, built on FalkorDB.
+  <strong>The self-healing memory layer for AI agents.</strong><br />
+  A knowledge graph that autonomously cleans, merges, and optimizes itself—powered by reinforcement learning.
 </p>
 
 <p align="center">
-  <a href="./docs/implementation_plan_rl_training.md">RL Training Plan</a> &nbsp;·&nbsp;
-  <a href="./src/graph_cortex/interfaces/cli/main.py">CLI</a>
+  <a href="#quickstart">Quickstart</a> &nbsp;·&nbsp;
+  <a href="#architecture-under-the-hood">How it works</a> &nbsp;·&nbsp;
+  <a href="./docs/implementation_plan_rl_training.md">RL Training</a>
 </p>
 
 <p align="center">
@@ -23,29 +27,57 @@
 
 ---
 
-## What this does
+## The Problem
 
-Most agent memory is passive — store what goes in, return what's asked for, degrade silently over time. Run any agent long enough and you hit three problems: duplicate/contradictory nodes from automated extraction, stale context that corrupts retrieval, and vector search that misses structural relationships.
+Most AI agent memory is passive. You store what goes in, return what's asked for, and watch it degrade silently over time. Run any autonomous agent long enough and you hit three walls:
+1. **Fragmentation:** Automated extraction creates duplicate or contradictory nodes.
+2. **Context Rot:** Stale information corrupts retrieval and confuses the LLM.
+3. **Blind Spots:** Standard vector search misses multi-hop structural relationships.
 
-GraphCortex is a memory layer that doesn't just store information — it restructures itself. Three agents run concurrently:
+## Enter GraphCortex
 
-- **Researcher** — handles queries using A*-guided graph traversal with lateral inhibition. Uses **Structural Edge-Weighting** (heavily discounting logical relationships like `REQUIRES` and penalizing weak ones like `RELATES_TO`) combined with embedding similarity as a heuristic to find the most relevant nodes faster, completely bypassing dense noise clusters. Reconstructs edges between anchor nodes via `shortestPath`.
-- **Summarizer** — runs async after each turn. Extracts entities/relationships from conversations and wires them into the episodic timeline.
-- **Librarian** — the interesting one. Runs an RL policy loop (PyTorch, REINFORCE) that observes graph state and decides whether to add bridging nodes, bump confidence on weak nodes, or soft-delete stale ones. It utilizes explicit **Graph Context Injection** during reasoning to generate highly specific, novel bridging concepts that interconnect explicit graph memories.
+**GraphCortex is a memory layer that doesn't just store information — it restructures itself.** 
 
-The system relies on a unified `:Searchable` graph schema to prevent node fragmentation across different memory episodes, ensuring that nodes safely share dual-identities (e.g., acting as an `Entity` and `Concept` simultaneously). The Librarian enforces memory immutability — it can update metadata (confidence, heat, access counts) but core factual properties are blocked at the environment level.
+Built on FalkorDB, it runs a swarm of concurrent agents that continuously curate, connect, and optimize your agent's knowledge graph in the background using Reinforcement Learning.
 
-### Memory layers
+### Core Features
 
-| Layer | What it holds |
-|---|---|
-| Working Memory | Active conversation context |
-| Episodic Memory | Time-stamped event chain (`:FOLLOWS` linked) |
-| Semantic Memory | Entities, concepts, relationships |
+- 🧠 **RL-Driven Curation (The Librarian):** A background PyTorch policy loop observes the graph state and autonomously decides to add bridging concepts, boost confidence on weak nodes, or soft-delete stale ones.
+- ⚡ **A*-Guided Retrieval (The Researcher):** Bypasses dense noise clusters using hybrid search (BM25 + Vector) combined with **Structural Edge-Weighting**. It penalizes weak connections and aggressively pursues high-value paths.
+- 🔄 **Async Consolidation (The Summarizer):** Automatically extracts entities and relationships from every interaction and wires them into a persistent episodic timeline.
+- 🛡️ **Memory Immutability:** Core factual properties are blocked from unauthorized modification at the environment level, ensuring graph structural integrity while metadata (heat, access counts) remains fluid.
 
 ---
 
-## Architecture
+## Quickstart
+
+GraphCortex deploys FalkorDB + the Swarm CLI. Works seamlessly on Mac (Apple Silicon/Intel), Linux, and Windows (WSL2).
+
+```bash
+git clone https://github.com/anonimity69/GraphCortex.git
+cd GraphCortex
+
+# Add your LLM provider key
+cp .env.example .env
+
+# Start the swarm
+chmod +x setup.sh shutdown.sh
+./setup.sh
+```
+
+| Action | Command |
+|---|---|
+| Start | `./setup.sh` |
+| Stop | `./shutdown.sh` |
+| Visualizer | [localhost:3000](http://localhost:3000) (FalkorDB Browser) |
+
+*The setup script handles port conflicts, waits for the DB to stabilize, and drops you straight into the interactive CLI.*
+
+---
+
+## Architecture Under the Hood
+
+GraphCortex operates on a unified `:Searchable` graph schema to prevent node fragmentation across different memory episodes. 
 
 ```mermaid
 graph TD
@@ -81,85 +113,23 @@ graph TD
     Librarian <--> LLM
 ```
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant C as CLI
-    participant R as Researcher
-    participant S as Summarizer
-    participant L as Librarian
-    participant DB as FalkorDB
-
-    U->>C: Query
-    C->>R: Process
-    R->>DB: Hybrid Search (BM25 + Vector)
-    DB-->>R: Anchor Nodes
-    R->>DB: A* Traversal (embedding heuristic)
-    DB-->>R: Context Sub-graph
-    R->>R: Lateral Inhibition
-    R->>C: Answer
-    C-->>U: Response
-
-    C->>S: Turn Data
-    S->>S: Extract Entities
-    S->>DB: Update Episodic Memory
-
-    loop Background
-        L->>DB: Read Graph State
-        L->>L: Policy Inference
-        L->>DB: Curate (Add/Update/Delete)
-    end
-```
-
----
-
-## Quickstart
-
-Deploys FalkorDB + the Swarm CLI. Works on Mac (Intel/Apple Silicon), Linux, and Windows (WSL2).
-
-```bash
-git clone https://github.com/anonimity69/GraphCortex.git
-cd GraphCortex
-cp .env.example .env  # add your GEMINI_API_KEY
-chmod +x setup.sh shutdown.sh
-./setup.sh
-```
-
-| Action | Command |
-|---|---|
-| Start | `./setup.sh` |
-| Stop | `./shutdown.sh` |
-| Graph Browser | [localhost:3000](http://localhost:3000) |
-
-The setup script handles port conflicts, waits for the DB to stabilize, and drops you into the CLI.
-
 ---
 
 ## CLI Commands
 
+Manage your swarm directly from the terminal:
+
+```bash
+/data     # View graph + dataset stats
+/train    # Run RL training (HotpotQA)
+/curate   # Trigger librarian manually
+/monitor  # View librarian metrics
+/clear    # Start a new session
+/exit     # Shutdown gracefully
 ```
-/data     - graph + dataset stats
-/train    - run RL training (HotpotQA)
-/curate   - trigger librarian manually
-/monitor  - librarian metrics
-/clear    - new session
-/exit     - shutdown
-```
-
----
-
-## Stack
-
-| Layer | Tech |
-|---|---|
-| Graph DB | FalkorDB (GraphBLAS engine) |
-| Agents | Asyncio |
-| RL | PyTorch (REINFORCE) |
-| Search | Hybrid BM25 + Cosine Vector + A* |
-| LLM | Gemini / OpenAI / OpenRouter |
 
 ---
 
 <p align="center">
-  Built for agents that need to think longer than one conversation.
+  <i>Built for agents that need to think longer than one conversation.</i>
 </p>
