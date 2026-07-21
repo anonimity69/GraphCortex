@@ -89,7 +89,8 @@ class RetrievalEngine:
                     "distance": g_cost,
                     "f_cost": f_cost,
                     "name": meta.get("name", ""),
-                    "type": meta.get("type", "")
+                    "type": meta.get("type", ""),
+                    "props": meta.get("props", {})
                 })
 
             # Stop expanding if we've gone too deep
@@ -107,7 +108,8 @@ class RetrievalEngine:
                 if n_uid not in node_metadata:
                     node_metadata[n_uid] = {
                         "name": neighbor.get("name", ""),
-                        "type": neighbor.get("type", "")
+                        "type": neighbor.get("type", ""),
+                        "props": neighbor.get("props", {})
                     }
 
                 # g_cost: one more hop
@@ -178,7 +180,8 @@ class RetrievalEngine:
                 "type": anchor["type"],
                 "distance": 0,
                 "degree": 1,
-                "activation_energy": INHIBITION_INITIAL_ENERGY
+                "activation_energy": INHIBITION_INITIAL_ENERGY,
+                "props": anchor.get("props", {})
             })
 
             # A*-guided traversal: expand from anchor using embedding similarity heuristic
@@ -195,6 +198,7 @@ class RetrievalEngine:
                     "type": node.get("type", ""),
                     "distance": node["distance"],
                     "degree": 1,  # will be refined by inhibition
+                    "props": node.get("props", {}),
                 })
 
             # If A* found nodes, use them; otherwise fall back to spreading activation

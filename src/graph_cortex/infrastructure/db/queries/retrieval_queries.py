@@ -7,7 +7,7 @@ def get_anchors_by_fulltext(graph, search_string, session_id, limit=LEXICAL_ANCH
     CALL db.idx.fulltext.queryNodes('Searchable', $search_string)
     YIELD node, score
     WHERE node.is_active = true AND node.session_id = $session_id
-    RETURN node.uid AS node_id, node.name AS name, labels(node)[0] AS type, score
+    RETURN node.uid AS node_id, node.name AS name, labels(node)[0] AS type, score, properties(node) AS props
     ORDER BY score DESC
     LIMIT $limit
     """
@@ -34,7 +34,7 @@ def get_anchors_by_vector_similarity(graph, vector, session_id, limit=SEMANTIC_A
         CALL db.idx.vector.queryNodes('{label}', 'embedding', $limit, vecf32($vector))
         YIELD node, score
         WHERE node.session_id = $session_id AND node.is_active = true AND score > $threshold
-        RETURN node.uid AS node_id, node.name AS name, '{label}' AS type, score
+        RETURN node.uid AS node_id, node.name AS name, '{label}' AS type, score, properties(node) AS props
         ORDER BY score DESC
         LIMIT $limit
         """
@@ -63,7 +63,8 @@ def get_neighbors(graph, node_uid, session_id):
            neighbor.name AS name,
            labels(neighbor)[0] AS type,
            type(r) AS rel_type,
-           neighbor.embedding AS embedding
+           neighbor.embedding AS embedding,
+           properties(neighbor) AS props
     """
     result = graph.query(query, params={
         'node_uid': node_uid,
@@ -93,7 +94,8 @@ def execute_spreading_activation_hop(graph, target_node_uid, session_id, hop_dep
         labels(connected)[0] AS type,
         distance,
         SIZE([(connected)--() | 1]) AS degree,
-        [r in rels | {{type: type(r), start_name: startNode(r).name, end_name: endNode(r).name}}] AS path_rels
+        [r in rels | {{type: type(r), start_name: startNode(r).name, end_name: endNode(r).name}}] AS path_rels,
+        properties(connected) AS props
     ORDER BY distance ASC
     """
     result = graph.query(query, params={

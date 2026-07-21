@@ -24,7 +24,17 @@ class ResearchAgent(BaseAgent):
             context_string = "Retrieved Knowledge Graph Context:\n"
             context_string += "### Entities & Concepts:\n"
             for node in nodes:
-                context_string += f"- ({node['type']}) {node['name']} [Distance: {node['distance']}]\n"
+                line = f"- ({node['type']}) {node['name']} [Distance: {node['distance']}]"
+                # Include stored properties (API keys, dates, literal values, etc.)
+                raw_props = node.get("props", {})
+                if raw_props and isinstance(raw_props, dict):
+                    clean = {k: v for k, v in raw_props.items()
+                             if k not in {"embedding", "session_id", "is_active", "uid", "name"}
+                             and not isinstance(v, (list, bytes))}
+                    if clean:
+                        props_str = ", ".join(f"{k}={v}" for k, v in clean.items())
+                        line += f" {{{props_str}}}"
+                context_string += line + "\n"
 
             context_string += "\n### Relationships:\n"
             for edge in edges:
