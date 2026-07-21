@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/logo.svg" width="150" alt="GraphCortex Logo" />
+  <img src="https://raw.githubusercontent.com/anonimity69/GraphCortex/main/assets/logo.svg" width="150" alt="GraphCortex Logo" />
 </p>
 
 <h1 align="center">GraphCortex</h1>
@@ -12,7 +12,7 @@
 <p align="center">
   <a href="#quickstart">Quickstart</a> &nbsp;·&nbsp;
   <a href="#architecture-under-the-hood">How it works</a> &nbsp;·&nbsp;
-  <a href="./docs/implementation_plan_rl_training.md">RL Training</a>
+  <a href="https://github.com/anonimity69/GraphCortex/blob/main/docs/implementation_plan_rl_training.md">RL Training</a>
 </p>
 
 <p align="center">
@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <img src="./assets/demo.gif" width="100%" alt="GraphCortex Demo" />
+  <img src="https://raw.githubusercontent.com/anonimity69/GraphCortex/main/assets/demo.gif" width="100%" alt="GraphCortex Demo" />
 </p>
 
 ---

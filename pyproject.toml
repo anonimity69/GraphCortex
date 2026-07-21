@@ -1,6 +1,6 @@
 [project]
 name = "graphcortex"
-version = "0.2.0"
+version = "0.2.1"
 description = "A self-healing knowledge graph memory layer for AI agents powered by Reinforcement Learning."
 readme = "README.md"
 license = { text = "MIT" }
