@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/banner.svg" width="100%" alt="GraphCortex" />
+  <img src="./assets/logo.svg" width="150" alt="GraphCortex Logo" />
 </p>
 
 <h1 align="center">GraphCortex</h1>
