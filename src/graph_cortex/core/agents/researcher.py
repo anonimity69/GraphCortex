@@ -39,7 +39,7 @@ class ResearchAgent(BaseAgent):
         if llm_response.get("status") == "error":
             final_answer = f"System Error: {llm_response.get('error')}"
         else:
-            final_answer = llm_response.get("response", "Error generating response.")
+            final_answer = llm_response.get("response") or "Error: The model returned an empty response."
 
         return {
             "answer": final_answer,
