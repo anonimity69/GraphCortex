@@ -1,9 +1,12 @@
+# === OS ===
 .DS_Store
 .AppleDouble
+Thumbs.db
 
+# === Personal study notes (not product code) ===
 studymaterial/
 
-# python
+# === Python ===
 __pycache__/
 *.py[codz]
 *$py.class
@@ -13,34 +16,52 @@ __pycache__/
 build/
 dist/
 .eggs/
+*.whl
 
-# env
+# === Environment & secrets ===
 .env
 .envrc
 .venv/
 venv/
 
-# logs
+# === Runtime logs ===
 Logs/
 *.log
 
-# data
+# === Local data / DB volumes ===
 data/
 
-# tests
+# === Scratch / throwaway debug scripts ===
+scratch/
+
+# === Test / CI artifacts ===
 .pytest_cache/
 htmlcov/
 .coverage
 .coverage.*
 
-# falkordb / docker
+# === Docker / FalkorDB runtime ===
 *.pid
 
-# editors
+# === Editor / tooling caches ===
 .idea/
 .vscode/
 .ruff_cache/
 .mypy_cache/
+.agents/
 
-# docs
+# === Docs build output ===
 docs/_build/
+
+# === Trained model weights (large binary, use releases/LFS) ===
+*.pt
+*.pth
+*.onnx
+*.bin
+
+# === Ad-hoc test / result files that aren't part of the product ===
+agent_response.txt
+result.md
+cli_test.py
+query_test.py
+conversation_benchmark_script.txt
